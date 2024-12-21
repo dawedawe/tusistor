@@ -7,6 +7,7 @@ use ratatui::{
     widgets::{Bar, BarChart, BarGroup, Block},
     DefaultTerminal, Frame,
 };
+use rusistor::{self, Resistor};
 
 #[derive(Debug, Default)]
 pub struct App {
@@ -36,8 +37,13 @@ impl App {
     /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
     /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
-        
-        let b = vertical_barchart(&[Color::Blue, Color::Green, Color::White]);
+        let resitor = Resistor::determine(54.0, Some(10.0), Some(5)).unwrap();
+        let colors = resitor
+            .bands()
+            .iter()
+            .map(|c| rusistor_color_to_ratatui_color(c))
+            .collect::<Vec<Color>>();
+        let b = barchart(&colors);
 
         frame.render_widget(b, frame.area())
     }
@@ -73,12 +79,8 @@ impl App {
     }
 }
 
-fn vertical_barchart(bands: &[Color]) -> BarChart {
-    let bars: Vec<Bar> = bands
-        .iter()
-        .enumerate()
-        .map(|(band, color)| vertical_bar(band, color))
-        .collect();
+fn barchart(bands: &[Color]) -> BarChart {
+    let bars: Vec<Bar> = bands.iter().map(|color| bar(color)).collect();
     let title = Line::from("TUsIstor").centered();
     BarChart::default()
         .data(BarGroup::default().bars(&bars))
@@ -86,13 +88,31 @@ fn vertical_barchart(bands: &[Color]) -> BarChart {
         .bar_width(5)
 }
 
-fn vertical_bar(band: usize, color: &Color) -> Bar {
+fn bar(color: &Color) -> Bar {
     Bar::default()
         .value(100)
         .text_value(String::new())
-        .style(temperature_style(color))
+        .style(bar_style(color))
 }
 
-fn temperature_style(color: &Color) -> Style {
+fn bar_style(color: &Color) -> Style {
     Style::new().fg(*color)
+}
+
+fn rusistor_color_to_ratatui_color(color: &rusistor::Color) -> Color {
+    match color {
+        rusistor::Color::Black => Color::Black,
+        rusistor::Color::Brown => Color::Rgb(165, 42, 42),
+        rusistor::Color::Red => Color::Red,
+        rusistor::Color::Orange => Color::Rgb(255, 165, 0),
+        rusistor::Color::Yellow => Color::Yellow,
+        rusistor::Color::Green => Color::Green,
+        rusistor::Color::Blue => Color::Blue,
+        rusistor::Color::Violet => Color::Rgb(148, 0, 211),
+        rusistor::Color::Grey => Color::Gray,
+        rusistor::Color::White => Color::White,
+        rusistor::Color::Gold => Color::Rgb(255, 215, 0),
+        rusistor::Color::Silver => Color::Rgb(192, 192, 192),
+        rusistor::Color::Pink => Color::Rgb(255, 105, 180),
+    }
 }

@@ -37,15 +37,14 @@ impl App {
     /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
     /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
-        let resitor = Resistor::determine(54.0, Some(10.0), Some(5)).unwrap();
+        let resitor = Resistor::determine(654.0, Some(10.0), Some(5)).unwrap();
         let colors = resitor
             .bands()
             .iter()
             .map(|c| rusistor_color_to_ratatui_color(c))
             .collect::<Vec<Color>>();
-        let b = barchart(&colors);
-
-        frame.render_widget(b, frame.area())
+        let chart = barchart(&colors);
+        frame.render_widget(chart, frame.area())
     }
 
     /// Reads the crossterm events and updates the state of [`App`].
@@ -86,6 +85,7 @@ fn barchart(bands: &[Color]) -> BarChart {
         .data(BarGroup::default().bars(&bars))
         .block(Block::new().title(title))
         .bar_width(5)
+        .bg(Color::Rgb(153, 204, 255))
 }
 
 fn bar(color: &Color) -> Bar {

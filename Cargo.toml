@@ -1,0 +1,12 @@
+[package]
+name = "tusistor"
+version = "0.1.0"
+authors = ["dawe <dawedawe@posteo.de>"]
+license = "MIT"
+edition = "2021"
+
+[dependencies]
+crossterm = "0.28.1"
+ratatui = "0.29.0"
+color-eyre = "0.6.3"
+rusistor = { path = "../rusistor", version = "0.1.0" }

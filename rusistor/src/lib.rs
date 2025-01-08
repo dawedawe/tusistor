@@ -753,7 +753,7 @@ impl Resistor {
             (Ok((digits, _e)), None, None) if digits.len() == 3 => {
                 Err(String::from("A 3-digit resistor needs a tolerance."))
             }
-            _ => todo!(),
+            _ => Err(String::from("Not a representable resistance value.")),
         }
     }
 

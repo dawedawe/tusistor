@@ -1,29 +1,46 @@
 use color_eyre::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    style::{Color, Style, Stylize},
-    text::Line,
-    widgets::{Bar, BarChart, BarGroup, Block},
+    style::{Color, Modifier, Style, Stylize},
+    text::{Line, Span, Text},
+    widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
     DefaultTerminal, Frame,
 };
 use rusistor::{self, Resistor};
+use tui_input::{Input, InputRequest};
 
-#[derive(Debug, Default)]
+#[derive(Debug, PartialEq)]
+enum InputMode {
+    Normal,
+    Editing,
+}
+
+#[derive(Debug)]
 pub struct App {
-    /// Is the application running?
     running: bool,
+    input: Input,
+    input_mode: InputMode,
+    resistor: Option<Resistor>,
+}
+
+impl Default for App {
+    fn default() -> App {
+        App {
+            running: true,
+            input: Input::default(),
+            input_mode: InputMode::Editing,
+            resistor: None,
+        }
+    }
 }
 
 impl App {
-    /// Construct a new instance of [`App`].
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Run the application's main loop.
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
-        self.running = true;
         while self.running {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_crossterm_events()?;
@@ -31,20 +48,87 @@ impl App {
         Ok(())
     }
 
-    /// Renders the user interface.
-    ///
-    /// This is where you add new widgets. See the following resources for more information:
-    /// - <https://docs.rs/ratatui/latest/ratatui/widgets/index.html>
-    /// - <https://github.com/ratatui/ratatui/tree/master/examples>
     fn draw(&mut self, frame: &mut Frame) {
-        let resitor = Resistor::determine(654.0, Some(10.0), Some(5)).unwrap();
-        let colors = resitor
-            .bands()
-            .iter()
-            .map(|c| rusistor_color_to_ratatui_color(c))
-            .collect::<Vec<Color>>();
-        let chart = barchart(&colors);
-        frame.render_widget(chart, frame.area())
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(2)
+            .constraints(
+                [
+                    Constraint::Length(1),
+                    Constraint::Length(3),
+                    Constraint::Min(1),
+                ]
+                .as_ref(),
+            )
+            .split(frame.area());
+
+        let (msg, style) = match self.input_mode {
+            InputMode::Normal => (
+                vec![
+                    Span::raw("Press "),
+                    Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to exit, "),
+                    Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to start editing."),
+                ],
+                Style::default().add_modifier(Modifier::RAPID_BLINK),
+            ),
+            InputMode::Editing => (
+                vec![
+                    Span::raw("Press "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to stop editing, "),
+                    Span::raw("Press "),
+                    Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to exit, "),
+                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to determine the resistor."),
+                ],
+                Style::default(),
+            ),
+        };
+        let text = Text::from(Line::from(msg)).style(style);
+        let help_message = Paragraph::new(text);
+        frame.render_widget(help_message, chunks[0]);
+
+        let width = chunks[0].width.max(3) - 3; // keep 2 for borders and 1 for cursor
+        let scroll = self.input.visual_scroll(width as usize);
+        let input = Paragraph::new(self.input.value())
+            .style(match self.input_mode {
+                InputMode::Normal => Style::default(),
+                InputMode::Editing => Style::default().fg(Color::Yellow),
+            })
+            .scroll((0, scroll as u16))
+            .block(Block::default().borders(Borders::ALL).title("Input"));
+        frame.render_widget(input, chunks[1]);
+        match self.input_mode {
+            InputMode::Normal =>
+                // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
+                {}
+
+            InputMode::Editing => {
+                // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+                frame.set_cursor_position((
+                    // Put cursor past the end of the input text
+                    chunks[1].x + ((self.input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
+                    // Move one line down, from the border to the input line
+                    chunks[1].y + 1,
+                ))
+            }
+        }
+
+        match &self.resistor {
+            Some(resistor) => {
+                let colors = resistor
+                    .bands()
+                    .iter()
+                    .map(|c| rusistor_color_to_ratatui_color(c))
+                    .collect::<Vec<Color>>();
+                let chart = barchart(&colors);
+                frame.render_widget(chart, chunks[2]);
+            }
+            None => (),
+        }
     }
 
     /// Reads the crossterm events and updates the state of [`App`].
@@ -64,15 +148,47 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
-        match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q'))
-            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
-            // Add other key handlers here.
-            _ => {}
+        match self.input_mode {
+            InputMode::Normal => match key.code {
+                KeyCode::Char('e') => {
+                    self.input_mode = InputMode::Editing;
+                }
+                KeyCode::Char('q') => {
+                    self.quit();
+                }
+                _ => {}
+            },
+            InputMode::Editing => match key.code {
+                KeyCode::Enter => {
+                    let input = self.input.value();
+                    if input == "q" {
+                        self.quit();
+                    } else {
+                        match input.parse::<f64>() {
+                            Ok(resistance) => {
+                                match Resistor::determine(resistance, Some(2.0), None) {
+                                    Ok(resitor) => self.resistor = Some(resitor),
+                                    Err(_) => self.resistor = None, // ToDo show error
+                                }
+                            }
+                            _ => (),
+                        }
+                        self.input.reset();
+                    }
+                }
+                KeyCode::Esc => {
+                    self.input_mode = InputMode::Normal;
+                }
+                _ => {
+                    if let KeyCode::Char(c) = key.code {
+                        let x: InputRequest = tui_input::InputRequest::InsertChar(c);
+                        self.input.handle(x);
+                    }
+                }
+            },
         }
     }
 
-    /// Set running to false to quit the application.
     fn quit(&mut self) {
         self.running = false;
     }

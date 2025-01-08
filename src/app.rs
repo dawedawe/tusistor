@@ -167,7 +167,7 @@ impl App {
                         match input.parse::<f64>() {
                             Ok(resistance) => {
                                 match Resistor::determine(resistance, Some(2.0), None) {
-                                    Ok(resitor) => self.resistor = Some(resitor),
+                                    Ok(resitor) => self.resistor = Some(resitor), // ToDo show input values
                                     Err(_) => self.resistor = None, // ToDo show error
                                 }
                             }

@@ -20,6 +20,8 @@ enum InputMode {
 pub struct App {
     running: bool,
     input: Input,
+    input2: Input,
+    input3: Input,
     input_mode: InputMode,
     resistor: Option<Resistor>,
 }
@@ -29,6 +31,8 @@ impl Default for App {
         App {
             running: true,
             input: Input::default(),
+            input2: Input::default(),
+            input3: Input::default(),
             input_mode: InputMode::Editing,
             resistor: None,
         }
@@ -61,6 +65,17 @@ impl App {
                 .as_ref(),
             )
             .split(frame.area());
+        let input_rects = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
+            ])
+            .split(chunks[1]);
+        let resistance_rect = input_rects[0];
+        let tolerance_rect = input_rects[1];
+        let tcr_rect = input_rects[2];
 
         let (msg, style) = match self.input_mode {
             InputMode::Normal => (
@@ -91,16 +106,43 @@ impl App {
         let help_message = Paragraph::new(text);
         frame.render_widget(help_message, chunks[0]);
 
-        let width = chunks[0].width.max(3) - 3; // keep 2 for borders and 1 for cursor
-        let scroll = self.input.visual_scroll(width as usize);
-        let input = Paragraph::new(self.input.value())
+        let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+        let scroll = self.input.visual_scroll(resistance_width as usize);
+        let resistance_paragraph = Paragraph::new(self.input.value())
             .style(match self.input_mode {
                 InputMode::Normal => Style::default(),
                 InputMode::Editing => Style::default().fg(Color::Yellow),
             })
             .scroll((0, scroll as u16))
-            .block(Block::default().borders(Borders::ALL).title("Input"));
-        frame.render_widget(input, chunks[1]);
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Resistance (Ohm) "),
+            );
+        frame.render_widget(resistance_paragraph, resistance_rect);
+
+        let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+        let tolerance_scroll = self.input2.visual_scroll(tolerance_width as usize);
+        let tolerance_paragraph = Paragraph::new(self.input2.value())
+            .style(match self.input_mode {
+                InputMode::Normal => Style::default(),
+                InputMode::Editing => Style::default().fg(Color::Yellow),
+            })
+            .scroll((0, tolerance_scroll as u16))
+            .block(Block::default().borders(Borders::ALL).title(" Tolerance "));
+        frame.render_widget(tolerance_paragraph, tolerance_rect);
+
+        let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+        let tcr_scroll = self.input3.visual_scroll(tcr_width as usize);
+        let tcr_paragraph = Paragraph::new(self.input3.value())
+            .style(match self.input_mode {
+                InputMode::Normal => Style::default(),
+                InputMode::Editing => Style::default().fg(Color::Yellow),
+            })
+            .scroll((0, tcr_scroll as u16))
+            .block(Block::default().borders(Borders::ALL).title(" TCR "));
+        frame.render_widget(tcr_paragraph, tcr_rect);
+
         match self.input_mode {
             InputMode::Normal =>
                 // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
@@ -110,9 +152,11 @@ impl App {
                 // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
                 frame.set_cursor_position((
                     // Put cursor past the end of the input text
-                    chunks[1].x + ((self.input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
+                    resistance_rect.x
+                        + ((self.input.visual_cursor()).max(scroll) - scroll) as u16
+                        + 1,
                     // Move one line down, from the border to the input line
-                    chunks[1].y + 1,
+                    resistance_rect.y + 1,
                 ))
             }
         }
@@ -168,7 +212,7 @@ impl App {
                             Ok(resistance) => {
                                 match Resistor::determine(resistance, Some(2.0), None) {
                                     Ok(resitor) => self.resistor = Some(resitor), // ToDo show input values
-                                    Err(_) => self.resistor = None, // ToDo show error
+                                    Err(_) => self.resistor = None,               // ToDo show error
                                 }
                             }
                             _ => (),

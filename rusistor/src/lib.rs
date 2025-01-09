@@ -443,6 +443,20 @@ impl Resistor {
         valid_configs.contains(&(color, band_position, band_count))
     }
 
+    fn validate_tolerance(tolerance: &Option<f64>) -> Result<Option<f64>, String> {
+        let valid_values = [1.0, 2.0, 0.05, 0.02, 0.5, 0.25, 0.1, 0.01, 5.0, 10.0];
+        match tolerance {
+            Some(tolerance) => {
+                if valid_values.contains(tolerance) {
+                    Result::Ok(Some(*tolerance))
+                } else {
+                    Result::Err(String::from("not a valid tolerance value"))
+                }
+            }
+            None => Result::Ok(None),
+        }
+    }
+
     fn try_create(bands: Vec<Color>) -> Result<Resistor, String> {
         match bands.len() {
             1 => {
@@ -710,20 +724,23 @@ impl Resistor {
         tcr: Option<usize>,
     ) -> Result<Resistor, String> {
         let digits = Resistor::determine_digits(resistance);
+        let tolerance = Resistor::validate_tolerance(&tolerance);
 
         match (digits, tolerance, tcr) {
-            (Ok((digits, e)), None, None) if digits.len() == 2 => Resistor::try_create_3_band(
+            (Ok((digits, e)), Ok(None), None) if digits.len() == 2 => Resistor::try_create_3_band(
                 Color::from(digits[0] as i32),
                 Color::from(digits[1] as i32),
                 Color::from(e),
             ),
-            (Ok((digits, e)), Some(tol), None) if digits.len() == 2 => Resistor::try_create_4_band(
-                Color::from(digits[0] as i32),
-                Color::from(digits[1] as i32),
-                Color::from(e),
-                Color::from_tolerance(tol),
-            ),
-            (Ok((digits, e)), Some(tol), Some(tcr)) if digits.len() == 2 => {
+            (Ok((digits, e)), Ok(Some(tol)), None) if digits.len() == 2 => {
+                Resistor::try_create_4_band(
+                    Color::from(digits[0] as i32),
+                    Color::from(digits[1] as i32),
+                    Color::from(e),
+                    Color::from_tolerance(tol),
+                )
+            }
+            (Ok((digits, e)), Ok(Some(tol)), Some(tcr)) if digits.len() == 2 => {
                 Resistor::try_create_6_band(
                     Color::from(digits[0] as i32),
                     Color::from(digits[1] as i32),
@@ -733,14 +750,16 @@ impl Resistor {
                     Color::from_tcr(tcr),
                 )
             }
-            (Ok((digits, e)), Some(tol), None) if digits.len() == 3 => Resistor::try_create_5_band(
-                Color::from(digits[0] as i32),
-                Color::from(digits[1] as i32),
-                Color::from(digits[2] as i32),
-                Color::from(e),
-                Color::from_tolerance(tol),
-            ),
-            (Ok((digits, e)), Some(tol), Some(tcr)) if digits.len() == 3 => {
+            (Ok((digits, e)), Ok(Some(tol)), None) if digits.len() == 3 => {
+                Resistor::try_create_5_band(
+                    Color::from(digits[0] as i32),
+                    Color::from(digits[1] as i32),
+                    Color::from(digits[2] as i32),
+                    Color::from(e),
+                    Color::from_tolerance(tol),
+                )
+            }
+            (Ok((digits, e)), Ok(Some(tol)), Some(tcr)) if digits.len() == 3 => {
                 Resistor::try_create_6_band(
                     Color::from(digits[0] as i32),
                     Color::from(digits[1] as i32),
@@ -750,9 +769,10 @@ impl Resistor {
                     Color::from_tcr(tcr),
                 )
             }
-            (Ok((digits, _e)), None, None) if digits.len() == 3 => {
+            (Ok((digits, _e)), Ok(None), None) if digits.len() == 3 => {
                 Err(String::from("A 3-digit resistor needs a tolerance."))
             }
+            (Ok(_), Err(e), _) => Err(e),
             _ => Err(String::from("Not a representable resistance value.")),
         }
     }

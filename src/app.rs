@@ -305,9 +305,8 @@ impl App {
                                 }
                             }
                         }
-                        self.resistance_input.reset();
-                        self.tolerance_input.reset();
-                        self.tcr_input.reset();
+
+                        self.reset_inputs();
                     }
                 }
                 KeyCode::Tab => self.focus = (self.focus + 1) % 3,
@@ -328,6 +327,13 @@ impl App {
 
     fn quit(&mut self) {
         self.running = false;
+    }
+
+    fn reset_inputs(&mut self) {
+        self.resistance_input.reset();
+        self.tolerance_input.reset();
+        self.tcr_input.reset();
+        self.focus = 0;
     }
 }
 

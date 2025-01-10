@@ -25,6 +25,7 @@ pub struct App {
     input_mode: InputMode,
     focus: usize,
     resistor: Option<Resistor>,
+    error: Option<String>,
 }
 
 impl Default for App {
@@ -37,6 +38,7 @@ impl Default for App {
             input_mode: InputMode::Editing,
             focus: 0,
             resistor: None,
+            error: None,
         }
     }
 }
@@ -197,7 +199,13 @@ impl App {
                 let chart = barchart(&colors);
                 frame.render_widget(chart, chunks[2]);
             }
-            None => (),
+            None => {
+                if let Some(e) = &self.error {
+                    let text = Text::from(e.to_string());
+                    let error_message = Paragraph::new(text);
+                    frame.render_widget(error_message, chunks[2]);
+                }
+            }
         }
     }
 
@@ -234,34 +242,67 @@ impl App {
                     if resistance_input_value == "q" {
                         self.quit();
                     } else {
+                        self.resistor = None;
+
+                        let resistance = match resistance_input_value.parse::<f64>() {
+                            Ok(t) => Ok(t),
+                            Err(e) => Err(format!("invalid input for resistance: {}", e)),
+                        };
+
                         let tolerance_input_value = self.tolerance_input.value();
                         let tolerance = if tolerance_input_value.is_empty() {
-                            None
+                            Ok(None)
                         } else {
                             match tolerance_input_value.parse::<f64>() {
-                                Ok(t) => Some(t),
-                                Err(_) => None, // ToDo show error
+                                Ok(t) => Ok(Some(t)),
+                                Err(e) => Err(format!("invalid input for tolerance: {}", e)),
                             }
                         };
 
                         let tcr_input_value = self.tcr_input.value();
                         let tcr = if tcr_input_value.is_empty() {
-                            None
+                            Ok(None)
                         } else {
                             match tcr_input_value.parse::<u32>() {
-                                Ok(t) => Some(t),
-                                Err(_) => None, // ToDo show error
+                                Ok(t) => Ok(Some(t)),
+                                Err(e) => Err(format!("invalid input for tcr: {}", e)),
                             }
                         };
 
-                        match resistance_input_value.parse::<f64>() {
-                            Ok(resistance) => {
+                        match (resistance, tolerance, tcr) {
+                            (Ok(resistance), Ok(tolerance), Ok(tcr)) => {
                                 match Resistor::determine(resistance, tolerance, tcr) {
-                                    Ok(resitor) => self.resistor = Some(resitor), // ToDo show input values
-                                    Err(_) => self.resistor = None,               // ToDo show error
+                                    Ok(resitor) => {
+                                        self.error = None;
+                                        self.resistor = Some(resitor)
+                                    }
+                                    Err(e) => {
+                                        self.error = Some(format!(
+                                            "could not determine a resistor for these inputs: {}",
+                                            e
+                                        ));
+                                    }
                                 }
                             }
-                            _ => self.resistor = None,
+                            (res, tol, tcr) => {
+                                let mut error_msg: String = String::from("");
+                                if let Err(res_error) = res {
+                                    error_msg.push_str(res_error.to_string().as_str());
+                                }
+                                if let Err(tol_error) = tol {
+                                    error_msg.push('\n');
+                                    error_msg.push_str(tol_error.to_string().as_str());
+                                }
+                                if let Err(tcr_error) = tcr {
+                                    error_msg.push('\n');
+                                    error_msg.push_str(tcr_error.to_string().as_str());
+                                }
+                                if error_msg.is_empty() {
+                                    self.error = None
+                                } else {
+                                    self.error = Some(error_msg)
+                                }
+                            }
                         }
                         self.resistance_input.reset();
                         self.tolerance_input.reset();

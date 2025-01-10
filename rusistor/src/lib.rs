@@ -55,7 +55,7 @@ impl Color {
         }
     }
 
-    fn as_tcr(&self) -> usize {
+    fn as_tcr(&self) -> u32 {
         match self {
             Color::Black => 250,
             Color::Brown => 100,
@@ -66,10 +66,10 @@ impl Color {
             Color::Blue => 10,
             Color::Violet => 5,
             Color::Grey => 1,
-            Color::White => panic!("invalid pcr color"),
-            Color::Gold => panic!("invalid pcr color"),
-            Color::Silver => panic!("invalid pcr color"),
-            Color::Pink => panic!("invalid pcr color"),
+            Color::White => panic!("invalid tcr color"),
+            Color::Gold => panic!("invalid tcr color"),
+            Color::Silver => panic!("invalid tcr color"),
+            Color::Pink => panic!("invalid tcr color"),
         }
     }
 
@@ -89,7 +89,7 @@ impl Color {
         }
     }
 
-    fn from_tcr(tcr: usize) -> Color {
+    fn from_tcr(tcr: u32) -> Color {
         match tcr {
             250 => Color::Black,
             100 => Color::Brown,
@@ -100,7 +100,7 @@ impl Color {
             10 => Color::Blue,
             5 => Color::Violet,
             1 => Color::Grey,
-            _ => panic!("invalid pcr value"),
+            _ => panic!("invalid tcr value"),
         }
     }
 }
@@ -592,7 +592,7 @@ impl Resistor {
         }
     }
 
-    fn calc(&self) -> (f64, f64, f64, Option<usize>) {
+    fn calc(&self) -> (f64, f64, f64, Option<u32>) {
         match &self {
             Resistor::ZeroOhm => (0.0, 0.0, 0.0, None),
             Resistor::ThreeBand {
@@ -671,7 +671,7 @@ impl Resistor {
         }
     }
 
-    pub fn determine_digits(ohm: f64) -> Result<(Vec<usize>, i32), String> {
+    pub fn determine_digits(ohm: f64) -> Result<(Vec<u32>, i32), String> {
         let mut exponent = 0i32;
         let mut s = ohm.to_string();
 
@@ -710,9 +710,9 @@ impl Resistor {
                 s.truncate(s.len() - 1);
             }
 
-            let digits: Vec<usize> = s
+            let digits: Vec<u32> = s
                 .chars()
-                .map(|c| c.to_digit(10).unwrap() as usize)
+                .map(|c| c.to_digit(10).unwrap())
                 .collect();
             Ok((digits, exponent))
         }
@@ -721,7 +721,7 @@ impl Resistor {
     pub fn determine(
         resistance: f64,
         tolerance: Option<f64>,
-        tcr: Option<usize>,
+        tcr: Option<u32>,
     ) -> Result<Resistor, String> {
         let digits = Resistor::determine_digits(resistance);
         let tolerance = Resistor::validate_tolerance(&tolerance);

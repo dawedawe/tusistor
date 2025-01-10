@@ -471,17 +471,9 @@ impl Resistor {
         }
     }
 
-    fn try_create(bands: Vec<Color>) -> Result<Resistor, String> {
+    pub fn try_create(bands: Vec<Color>) -> Result<Resistor, String> {
         match bands.len() {
-            1 => {
-                if bands[0] == Color::Black {
-                    Result::Ok(Resistor::ZeroOhm)
-                } else {
-                    Result::Err(String::from(
-                        "In a single band resistor, only a black band is valid.",
-                    ))
-                }
-            }
+            1 => Resistor::try_create_1_band(bands[0].clone()),
             3 => Resistor::try_create_3_band(bands[0].clone(), bands[1].clone(), bands[2].clone()),
             4 => Resistor::try_create_4_band(
                 bands[0].clone(),
@@ -512,7 +504,9 @@ impl Resistor {
         if Resistor::is_valid_color_in_band(&band, 1, 1) {
             Ok(Resistor::ZeroOhm)
         } else {
-            Err(String::from("no valid 1-band resistor"))
+            Err(String::from(
+                "In a single band resistor, only a black band is valid.",
+            ))
         }
     }
 
@@ -606,7 +600,7 @@ impl Resistor {
         }
     }
 
-    fn calc(&self) -> (f64, f64, f64, Option<u32>) {
+    pub fn calc(&self) -> (f64, f64, f64, Option<u32>) {
         match &self {
             Resistor::ZeroOhm => (0.0, 0.0, 0.0, None),
             Resistor::ThreeBand {
@@ -685,7 +679,7 @@ impl Resistor {
         }
     }
 
-    pub fn determine_digits(ohm: f64) -> Result<(Vec<u32>, i32), String> {
+    pub fn determine_digits_and_exponent(ohm: f64) -> Result<(Vec<u32>, i32), String> {
         let mut exponent = 0i32;
         let mut s = ohm.to_string();
 
@@ -709,8 +703,8 @@ impl Resistor {
                 dot_idx = s.find('.');
             }
 
-            // push single digit left
-            if s.len() == 1 {
+            // push single digit left if not zero-ohm resistor
+            if s.len() == 1 && s != "0" {
                 s.insert(1, '0');
                 exponent -= 1;
             }
@@ -734,11 +728,14 @@ impl Resistor {
         tolerance: Option<f64>,
         tcr: Option<u32>,
     ) -> Result<Resistor, String> {
-        let digits = Resistor::determine_digits(resistance);
+        let digits = Resistor::determine_digits_and_exponent(resistance);
         let tolerance = Resistor::validate_tolerance(&tolerance);
         let tcr = Resistor::validate_tcr(&tcr);
 
         match (digits, tolerance, tcr) {
+            (Ok((digits, 0)), Ok(None), Ok(None)) if digits.len() == 1 => {
+                Resistor::try_create_1_band(Color::from(digits[0] as i32))
+            }
             (Ok((digits, e)), Ok(None), Ok(None)) if digits.len() == 2 => {
                 Resistor::try_create_3_band(
                     Color::from(digits[0] as i32),
@@ -1090,21 +1087,23 @@ mod tests {
 
     #[test]
     pub fn test_determine_digits() {
-        let digs = Resistor::determine_digits(12.0).unwrap();
+        let digs = Resistor::determine_digits_and_exponent(0.0).unwrap();
+        assert_eq!(digs, (vec![0], 0));
+        let digs = Resistor::determine_digits_and_exponent(12.0).unwrap();
         assert_eq!(digs, (vec![1, 2], 0));
-        let digs = Resistor::determine_digits(1.2).unwrap();
+        let digs = Resistor::determine_digits_and_exponent(1.2).unwrap();
         assert_eq!(digs, (vec![1, 2], -1));
-        let digs = Resistor::determine_digits(1.0).unwrap();
+        let digs = Resistor::determine_digits_and_exponent(1.0).unwrap();
         assert_eq!(digs, (vec![1, 0], -1));
-        let digs = Resistor::determine_digits(0.12).unwrap();
+        let digs = Resistor::determine_digits_and_exponent(0.12).unwrap();
         assert_eq!(digs, (vec![1, 2], -2));
-        let digs = Resistor::determine_digits(0.01).unwrap();
+        let digs = Resistor::determine_digits_and_exponent(0.01).unwrap();
         assert_eq!(digs, (vec![1, 0], -3));
-        let digs = Resistor::determine_digits(0.123).unwrap();
+        let digs = Resistor::determine_digits_and_exponent(0.123).unwrap();
         assert_eq!(digs, (vec![1, 2, 3], -3));
-        let digs = Resistor::determine_digits(0.8).unwrap();
+        let digs = Resistor::determine_digits_and_exponent(0.8).unwrap();
         assert_eq!(digs, (vec![8, 0], -2));
-        let digs = Resistor::determine_digits(0.01003);
+        let digs = Resistor::determine_digits_and_exponent(0.01003);
         assert!(digs.is_err());
     }
 }

@@ -157,36 +157,17 @@ impl App {
 
             InputMode::Editing => {
                 // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-
-                match self.focus {
-                    0 => frame.set_cursor_position((
-                        // Put cursor past the end of the input text
-                        resistance_rect.x
-                            + ((self.resistance_input.visual_cursor()).max(resistance_scroll)
-                                - resistance_scroll) as u16
-                            + 1,
-                        // Move one line down, from the border to the input line
-                        resistance_rect.y + 1,
-                    )),
-                    1 => frame.set_cursor_position((
-                        // Put cursor past the end of the input text
-                        tolerance_rect.x
-                            + ((self.tolerance_input.visual_cursor()).max(tolerance_scroll)
-                                - tolerance_scroll) as u16
-                            + 1,
-                        // Move one line down, from the border to the input line
-                        tolerance_rect.y + 1,
-                    )),
-                    _ => frame.set_cursor_position((
-                        // Put cursor past the end of the input text
-                        tcr_rect.x
-                            + ((self.tcr_input.visual_cursor()).max(tcr_scroll) - tcr_scroll)
-                                as u16
-                            + 1,
-                        // Move one line down, from the border to the input line
-                        tcr_rect.y + 1,
-                    )),
-                }
+                let (rect, input, scroll) = match self.focus {
+                    0 => (resistance_rect, &self.resistance_input, resistance_scroll),
+                    1 => (tolerance_rect, &self.tolerance_input, tolerance_scroll),
+                    _ => (tcr_rect, &self.tcr_input, tcr_scroll),
+                };
+                frame.set_cursor_position((
+                    // Put cursor past the end of the input text
+                    rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
+                    // Move one line down, from the border to the input line
+                    rect.y + 1,
+                ));
             }
         }
 

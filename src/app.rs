@@ -193,7 +193,7 @@ impl App {
                     .bands()
                     .iter()
                     .map(|c| rusistor_color_to_ratatui_color(c))
-                    .collect::<Vec<Color>>();
+                    .collect::<Vec<(Color, String)>>();
                 let chart = barchart(&colors);
                 frame.render_widget(chart, chunks[2]);
             }
@@ -292,20 +292,20 @@ impl App {
     }
 }
 
-fn barchart(bands: &[Color]) -> BarChart {
+fn barchart(bands: &[(Color, String)]) -> BarChart {
     let bars: Vec<Bar> = bands.iter().map(|color| bar(color)).collect();
     let title = Line::from("TUsIstor").centered();
     BarChart::default()
         .data(BarGroup::default().bars(&bars))
         .block(Block::new().title(title))
-        .bar_width(5)
+        .bar_width(10)
         .bg(Color::Rgb(153, 204, 255))
 }
 
-fn bar(color: &Color) -> Bar {
+fn bar((color, name): &(Color, String)) -> Bar {
     Bar::default()
         .value(100)
-        .text_value(String::new())  // ToDo show color as text info
+        .text_value(name.to_string())
         .style(bar_style(color))
 }
 
@@ -313,20 +313,20 @@ fn bar_style(color: &Color) -> Style {
     Style::new().fg(*color)
 }
 
-fn rusistor_color_to_ratatui_color(color: &rusistor::Color) -> Color {
+fn rusistor_color_to_ratatui_color(color: &rusistor::Color) -> (Color, String) {
     match color {
-        rusistor::Color::Black => Color::Black,
-        rusistor::Color::Brown => Color::Rgb(165, 42, 42),
-        rusistor::Color::Red => Color::Red,
-        rusistor::Color::Orange => Color::Rgb(255, 165, 0),
-        rusistor::Color::Yellow => Color::Yellow,
-        rusistor::Color::Green => Color::Green,
-        rusistor::Color::Blue => Color::Blue,
-        rusistor::Color::Violet => Color::Rgb(148, 0, 211),
-        rusistor::Color::Grey => Color::Gray,
-        rusistor::Color::White => Color::White,
-        rusistor::Color::Gold => Color::Rgb(255, 215, 0),
-        rusistor::Color::Silver => Color::Rgb(192, 192, 192),
-        rusistor::Color::Pink => Color::Rgb(255, 105, 180),
+        rusistor::Color::Black => (Color::Black, String::from("black")),
+        rusistor::Color::Brown => (Color::Rgb(165, 42, 42), String::from("brown")),
+        rusistor::Color::Red => (Color::Red, String::from("red")),
+        rusistor::Color::Orange => (Color::Rgb(255, 165, 0), String::from("organge")),
+        rusistor::Color::Yellow => (Color::Yellow, String::from("yellow")),
+        rusistor::Color::Green => (Color::Green, String::from("green")),
+        rusistor::Color::Blue => (Color::Blue, String::from("blue")),
+        rusistor::Color::Violet => (Color::Rgb(148, 0, 211), String::from("violet")),
+        rusistor::Color::Grey => (Color::Gray, String::from("grey")),
+        rusistor::Color::White => (Color::White, String::from("white")),
+        rusistor::Color::Gold => (Color::Rgb(255, 215, 0), String::from("gold")),
+        rusistor::Color::Silver => (Color::Rgb(192, 192, 192), String::from("silver")),
+        rusistor::Color::Pink => (Color::Rgb(255, 105, 180), String::from("pink")),
     }
 }

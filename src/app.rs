@@ -2,7 +2,7 @@ use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
     DefaultTerminal, Frame,
@@ -78,9 +78,21 @@ impl App {
                 Constraint::Ratio(1, 3),
             ])
             .split(chunks[1]);
+
+        let main_rects = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(10),
+                Constraint::Percentage(80),
+                Constraint::Percentage(10),
+            ])
+            .split(chunks[2]);
+
+        let help_msg_rect = chunks[0];
         let resistance_rect = input_rects[0];
         let tolerance_rect = input_rects[1];
         let tcr_rect = input_rects[2];
+        let main_rect = main_rects[1];
 
         let (msg, style) = match self.input_mode {
             InputMode::Normal => (
@@ -109,7 +121,7 @@ impl App {
         };
         let text = Text::from(Line::from(msg)).style(style);
         let help_message = Paragraph::new(text);
-        frame.render_widget(help_message, chunks[0]);
+        frame.render_widget(help_message, help_msg_rect);
 
         let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
         let resistance_scroll = self
@@ -179,13 +191,13 @@ impl App {
                     .map(|c| rusistor_color_to_ratatui_color(c))
                     .collect::<Vec<(Color, String)>>();
                 let chart = barchart(&colors);
-                frame.render_widget(chart, chunks[2]);
+                frame.render_widget(chart, main_rect);
             }
             None => {
                 if let Some(e) = &self.error {
                     let text = Text::from(e.to_string());
                     let error_message = Paragraph::new(text);
-                    frame.render_widget(error_message, chunks[2]);
+                    frame.render_widget(error_message, main_rect);
                 }
             }
         }
@@ -325,7 +337,6 @@ fn barchart(bands: &[(Color, String)]) -> BarChart {
         .data(BarGroup::default().bars(&bars))
         .block(Block::new().title(title))
         .bar_width(10)
-        .bg(Color::Rgb(153, 204, 255))
 }
 
 fn bar((color, name): &(Color, String)) -> Bar {

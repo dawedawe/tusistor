@@ -8,7 +8,8 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use rusistor::{self, Resistor};
-use tui_input::{Input, InputRequest};
+use tui_input::backend::crossterm::EventHandler;
+use tui_input::Input;
 
 #[derive(Debug, PartialEq)]
 enum InputMode {
@@ -314,15 +315,12 @@ impl App {
                     self.input_mode = InputMode::Normal;
                 }
                 _ => {
-                    if let KeyCode::Char(c) = key.code {
-                        let x: InputRequest = tui_input::InputRequest::InsertChar(c);
-                        let target_input = match self.focus {
-                            0 => &mut self.resistance_input,
-                            1 => &mut self.tolerance_input,
-                            _ => &mut self.tcr_input,
-                        };
-                        target_input.handle(x);
-                    }
+                    let target_input = match self.focus {
+                        0 => &mut self.resistance_input,
+                        1 => &mut self.tolerance_input,
+                        _ => &mut self.tcr_input,
+                    };
+                    target_input.handle_event(&Event::Key(key));
                 }
             },
         }

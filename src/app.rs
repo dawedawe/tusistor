@@ -19,10 +19,11 @@ enum InputMode {
 #[derive(Debug)]
 pub struct App {
     running: bool,
-    input: Input,
-    input2: Input,
-    input3: Input,
+    resistance_input: Input,
+    tolerance_input: Input,
+    tcr_input: Input,
     input_mode: InputMode,
+    focus: usize,
     resistor: Option<Resistor>,
 }
 
@@ -30,10 +31,11 @@ impl Default for App {
     fn default() -> App {
         App {
             running: true,
-            input: Input::default(),
-            input2: Input::default(),
-            input3: Input::default(),
+            resistance_input: Input::default(),
+            tolerance_input: Input::default(),
+            tcr_input: Input::default(),
             input_mode: InputMode::Editing,
+            focus: 0,
             resistor: None,
         }
     }
@@ -107,13 +109,15 @@ impl App {
         frame.render_widget(help_message, chunks[0]);
 
         let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-        let scroll = self.input.visual_scroll(resistance_width as usize);
-        let resistance_paragraph = Paragraph::new(self.input.value())
+        let resistance_scroll = self
+            .resistance_input
+            .visual_scroll(resistance_width as usize);
+        let resistance_paragraph = Paragraph::new(self.resistance_input.value())
             .style(match self.input_mode {
                 InputMode::Normal => Style::default(),
                 InputMode::Editing => Style::default().fg(Color::Yellow),
             })
-            .scroll((0, scroll as u16))
+            .scroll((0, resistance_scroll as u16))
             .block(
                 Block::default()
                     .borders(Borders::ALL)
@@ -122,8 +126,8 @@ impl App {
         frame.render_widget(resistance_paragraph, resistance_rect);
 
         let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-        let tolerance_scroll = self.input2.visual_scroll(tolerance_width as usize);
-        let tolerance_paragraph = Paragraph::new(self.input2.value())
+        let tolerance_scroll = self.tolerance_input.visual_scroll(tolerance_width as usize);
+        let tolerance_paragraph = Paragraph::new(self.tolerance_input.value())
             .style(match self.input_mode {
                 InputMode::Normal => Style::default(),
                 InputMode::Editing => Style::default().fg(Color::Yellow),
@@ -133,8 +137,8 @@ impl App {
         frame.render_widget(tolerance_paragraph, tolerance_rect);
 
         let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-        let tcr_scroll = self.input3.visual_scroll(tcr_width as usize);
-        let tcr_paragraph = Paragraph::new(self.input3.value())
+        let tcr_scroll = self.tcr_input.visual_scroll(tcr_width as usize);
+        let tcr_paragraph = Paragraph::new(self.tcr_input.value())
             .style(match self.input_mode {
                 InputMode::Normal => Style::default(),
                 InputMode::Editing => Style::default().fg(Color::Yellow),
@@ -150,14 +154,36 @@ impl App {
 
             InputMode::Editing => {
                 // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-                frame.set_cursor_position((
-                    // Put cursor past the end of the input text
-                    resistance_rect.x
-                        + ((self.input.visual_cursor()).max(scroll) - scroll) as u16
-                        + 1,
-                    // Move one line down, from the border to the input line
-                    resistance_rect.y + 1,
-                ))
+
+                match self.focus {
+                    0 => frame.set_cursor_position((
+                        // Put cursor past the end of the input text
+                        resistance_rect.x
+                            + ((self.resistance_input.visual_cursor()).max(resistance_scroll)
+                                - resistance_scroll) as u16
+                            + 1,
+                        // Move one line down, from the border to the input line
+                        resistance_rect.y + 1,
+                    )),
+                    1 => frame.set_cursor_position((
+                        // Put cursor past the end of the input text
+                        tolerance_rect.x
+                            + ((self.tolerance_input.visual_cursor()).max(tolerance_scroll)
+                                - tolerance_scroll) as u16
+                            + 1,
+                        // Move one line down, from the border to the input line
+                        tolerance_rect.y + 1,
+                    )),
+                    _ => frame.set_cursor_position((
+                        // Put cursor past the end of the input text
+                        tcr_rect.x
+                            + ((self.tcr_input.visual_cursor()).max(tcr_scroll) - tcr_scroll)
+                                as u16
+                            + 1,
+                        // Move one line down, from the border to the input line
+                        tcr_rect.y + 1,
+                    )),
+                }
             }
         }
 
@@ -204,29 +230,57 @@ impl App {
             },
             InputMode::Editing => match key.code {
                 KeyCode::Enter => {
-                    let input = self.input.value();
-                    if input == "q" {
+                    let resistance_input_value = self.resistance_input.value();
+                    if resistance_input_value == "q" {
                         self.quit();
                     } else {
-                        match input.parse::<f64>() {
+                        let tolerance_input_value = self.tolerance_input.value();
+                        let tolerance = if tolerance_input_value.is_empty() {
+                            None
+                        } else {
+                            match tolerance_input_value.parse::<f64>() {
+                                Ok(t) => Some(t),
+                                Err(_) => None, // ToDo show error
+                            }
+                        };
+
+                        let tcr_input_value = self.tcr_input.value();
+                        let tcr = if tcr_input_value.is_empty() {
+                            None
+                        } else {
+                            match tcr_input_value.parse::<u32>() {
+                                Ok(t) => Some(t),
+                                Err(_) => None, // ToDo show error
+                            }
+                        };
+
+                        match resistance_input_value.parse::<f64>() {
                             Ok(resistance) => {
-                                match Resistor::determine(resistance, Some(2.0), None) {
+                                match Resistor::determine(resistance, tolerance, tcr) {
                                     Ok(resitor) => self.resistor = Some(resitor), // ToDo show input values
                                     Err(_) => self.resistor = None,               // ToDo show error
                                 }
                             }
-                            _ => (),
+                            _ => self.resistor = None,
                         }
-                        self.input.reset();
+                        self.resistance_input.reset();
+                        self.tolerance_input.reset();
+                        self.tcr_input.reset();
                     }
                 }
+                KeyCode::Tab => self.focus = (self.focus + 1) % 3,
                 KeyCode::Esc => {
                     self.input_mode = InputMode::Normal;
                 }
                 _ => {
                     if let KeyCode::Char(c) = key.code {
                         let x: InputRequest = tui_input::InputRequest::InsertChar(c);
-                        self.input.handle(x);
+                        let target_input = match self.focus {
+                            0 => &mut self.resistance_input,
+                            1 => &mut self.tolerance_input,
+                            _ => &mut self.tcr_input,
+                        };
+                        target_input.handle(x);
                     }
                 }
             },
@@ -251,7 +305,7 @@ fn barchart(bands: &[Color]) -> BarChart {
 fn bar(color: &Color) -> Bar {
     Bar::default()
         .value(100)
-        .text_value(String::new())
+        .text_value(String::new())  // ToDo show color as text info
         .style(bar_style(color))
 }
 

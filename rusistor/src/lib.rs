@@ -127,6 +127,15 @@ impl From<i32> for Color {
 }
 
 #[derive(PartialEq, Debug)]
+pub struct ResistorSpecs {
+    pub ohm: f64,
+    pub tolerance: f64,
+    pub min_ohm: f64,
+    pub max_ohm: f64,
+    pub tcr: Option<u32>,
+}
+
+#[derive(PartialEq, Debug)]
 pub enum Resistor {
     ZeroOhm,
     ThreeBand {
@@ -600,9 +609,15 @@ impl Resistor {
         }
     }
 
-    pub fn calc(&self) -> (f64, f64, f64, Option<u32>) {
+    pub fn specs(&self) -> ResistorSpecs {
         match &self {
-            Resistor::ZeroOhm => (0.0, 0.0, 0.0, None),
+            Resistor::ZeroOhm => ResistorSpecs {
+                ohm: 0.0,
+                tolerance: 0.2,
+                min_ohm: 0.0,
+                max_ohm: 0.0,
+                tcr: None,
+            },
             Resistor::ThreeBand {
                 band1,
                 band2,
@@ -615,9 +630,16 @@ impl Resistor {
                 let multiplier = 10.0f64.powf(exponent);
                 let ohm = (digit1 * 10.0 + digit2) * multiplier;
                 let tolerance_ohm = ohm * tolerance;
-                let min = ohm - tolerance_ohm;
-                let max = ohm + tolerance_ohm;
-                (ohm, min, max, None)
+                let min_ohm = ohm - tolerance_ohm;
+                let max_ohm = ohm + tolerance_ohm;
+                let tcr = None;
+                ResistorSpecs {
+                    ohm,
+                    tolerance,
+                    min_ohm,
+                    max_ohm,
+                    tcr,
+                }
             }
             Resistor::FourBand {
                 band1,
@@ -632,9 +654,16 @@ impl Resistor {
                 let multiplier = 10.0f64.powf(exponent);
                 let ohm = (digit1 * 10.0 + digit2) * multiplier;
                 let tolerance_ohm = ohm * tolerance;
-                let min = ohm - tolerance_ohm;
-                let max = ohm + tolerance_ohm;
-                (ohm, min, max, None)
+                let min_ohm = ohm - tolerance_ohm;
+                let max_ohm = ohm + tolerance_ohm;
+                let tcr = None;
+                ResistorSpecs {
+                    ohm,
+                    tolerance,
+                    min_ohm,
+                    max_ohm,
+                    tcr,
+                }
             }
             Resistor::FiveBand {
                 band1,
@@ -651,9 +680,16 @@ impl Resistor {
                 let multiplier = 10.0f64.powf(exponent);
                 let ohm = (digit1 * 100.0 + digit2 * 10.0 + digit3) * multiplier;
                 let tolerance_ohm = ohm * tolerance;
-                let min = ohm - tolerance_ohm;
-                let max = ohm + tolerance_ohm;
-                (ohm, min, max, None)
+                let min_ohm = ohm - tolerance_ohm;
+                let max_ohm = ohm + tolerance_ohm;
+                let tcr = None;
+                ResistorSpecs {
+                    ohm,
+                    tolerance,
+                    min_ohm,
+                    max_ohm,
+                    tcr,
+                }
             }
             Resistor::SixBand {
                 band1,
@@ -668,13 +704,19 @@ impl Resistor {
                 let digit3 = band3.as_digit_or_exponent();
                 let exponent = band4.as_digit_or_exponent();
                 let tolerance = band5.as_tolerance();
-                let tcr = band6.as_tcr();
+                let tcr = Some(band6.as_tcr());
                 let multiplier = 10.0f64.powf(exponent);
                 let ohm = (digit1 * 100.0 + digit2 * 10.0 + digit3) * multiplier;
                 let tolerance_ohm = ohm * tolerance;
-                let min = ohm - tolerance_ohm;
-                let max = ohm + tolerance_ohm;
-                (ohm, min, max, Some(tcr))
+                let min_ohm = ohm - tolerance_ohm;
+                let max_ohm = ohm + tolerance_ohm;
+                ResistorSpecs {
+                    ohm,
+                    tolerance,
+                    min_ohm,
+                    max_ohm,
+                    tcr,
+                }
             }
         }
     }
@@ -931,23 +973,50 @@ mod tests {
     #[test]
     pub fn calc_zeroohm_resistor() {
         let r = Resistor::try_create_1_band(Color::Black).unwrap();
-        let o = r.calc();
-        assert_eq!(o, (0.0, 0.0, 0.0, None))
+        let o = r.specs();
+        assert_eq!(
+            o,
+            ResistorSpecs {
+                ohm: 0.0,
+                tolerance: 0.2,
+                min_ohm: 0.0,
+                max_ohm: 0.0,
+                tcr: None
+            }
+        )
     }
 
     #[test]
     pub fn calc_3_band_resistor() {
         let r = Resistor::try_create_3_band(Color::Red, Color::Black, Color::Pink);
-        let o = r.unwrap().calc();
-        assert_eq!(o, (0.02, 0.016, 0.024, None))
+        let o = r.unwrap().specs();
+        assert_eq!(
+            o,
+            ResistorSpecs {
+                ohm: 0.02,
+                tolerance: 0.2,
+                min_ohm: 0.016,
+                max_ohm: 0.024,
+                tcr: None
+            }
+        )
     }
 
     #[test]
     pub fn calc_4_band_resistor_1() {
         let r = Resistor::try_create_4_band(Color::Red, Color::Red, Color::Orange, Color::Gold)
             .unwrap();
-        let o = r.calc();
-        assert_eq!(o, (22000.0, 20900.0, 23100.0, None))
+        let o = r.specs();
+        assert_eq!(
+            o,
+            ResistorSpecs {
+                ohm: 22000.0,
+                tolerance: 0.05,
+                min_ohm: 20900.0,
+                max_ohm: 23100.0,
+                tcr: None
+            }
+        )
     }
 
     #[test]
@@ -955,16 +1024,34 @@ mod tests {
         let r =
             Resistor::try_create_4_band(Color::Yellow, Color::Violet, Color::Brown, Color::Gold)
                 .unwrap();
-        let o = r.calc();
-        assert_eq!(o, (470.0, 446.5, 493.5, None))
+        let o = r.specs();
+        assert_eq!(
+            o,
+            ResistorSpecs {
+                ohm: 470.0,
+                tolerance: 0.05,
+                min_ohm: 446.5,
+                max_ohm: 493.5,
+                tcr: None
+            }
+        )
     }
 
     #[test]
     pub fn calc_4_band_resistor_3() {
         let r = Resistor::try_create_4_band(Color::Blue, Color::Grey, Color::Black, Color::Orange)
             .unwrap();
-        let o = r.calc();
-        assert_eq!(o, (68.0, 67.966, 68.034, None))
+        let o = r.specs();
+        assert_eq!(
+            o,
+            ResistorSpecs {
+                ohm: 68.0,
+                tolerance: 0.0005,
+                min_ohm: 67.966,
+                max_ohm: 68.034,
+                tcr: None
+            }
+        )
     }
 
     #[test]
@@ -977,8 +1064,17 @@ mod tests {
             Color::Brown,
         )
         .unwrap();
-        let o = r.calc();
-        assert_eq!(o, (560.0, 554.4, 565.6, None))
+        let o = r.specs();
+        assert_eq!(
+            o,
+            ResistorSpecs {
+                ohm: 560.0,
+                tolerance: 0.01,
+                min_ohm: 554.4,
+                max_ohm: 565.6,
+                tcr: None
+            }
+        )
     }
 
     #[test]
@@ -992,8 +1088,17 @@ mod tests {
             Color::Grey,
         )
         .unwrap();
-        let o = r.calc();
-        assert_eq!(o, (560.0, 554.4, 565.6, Some(1)))
+        let o = r.specs();
+        assert_eq!(
+            o,
+            ResistorSpecs {
+                ohm: 560.0,
+                tolerance: 0.01,
+                min_ohm: 554.4,
+                max_ohm: 565.6,
+                tcr: Some(1)
+            }
+        )
     }
 
     #[test]

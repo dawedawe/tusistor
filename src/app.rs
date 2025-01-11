@@ -347,7 +347,8 @@ fn barchart(bands: &[(Color, String)], ohm: f64, tolerance: f64, tcr: Option<u32
 fn bar((color, name): &(Color, String)) -> Bar {
     Bar::default()
         .value(100)
-        .text_value(name.to_string())
+        .text_value("".to_string())
+        .label(Line::from(name.as_str()))
         .style(bar_style(color))
 }
 

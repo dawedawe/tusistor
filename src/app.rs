@@ -11,19 +11,12 @@ use rusistor::{self, Resistor};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
-#[derive(Debug, PartialEq)]
-enum InputMode {
-    Normal,
-    Editing,
-}
-
 #[derive(Debug)]
 pub struct App {
     running: bool,
     resistance_input: Input,
     tolerance_input: Input,
     tcr_input: Input,
-    input_mode: InputMode,
     focus: usize,
     resistor: Option<Resistor>,
     error: Option<String>,
@@ -36,7 +29,6 @@ impl Default for App {
             resistance_input: Input::default(),
             tolerance_input: Input::default(),
             tcr_input: Input::default(),
-            input_mode: InputMode::Editing,
             focus: 0,
             resistor: None,
             error: None,
@@ -94,31 +86,18 @@ impl App {
         let tcr_rect = input_rects[2];
         let main_rect = main_rects[1];
 
-        let (msg, style) = match self.input_mode {
-            InputMode::Normal => (
-                vec![
-                    Span::raw("Press "),
-                    Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to exit, "),
-                    Span::styled("e", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to start editing."),
-                ],
-                Style::default().add_modifier(Modifier::RAPID_BLINK),
-            ),
-            InputMode::Editing => (
-                vec![
-                    Span::raw("Press "),
-                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to stop editing, "),
-                    Span::raw("Press "),
-                    Span::styled("q", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to exit, "),
-                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to determine the resistor."),
-                ],
-                Style::default(),
-            ),
-        };
+        let (msg, style) = (
+            vec![
+                Span::raw("Press "),
+                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to exit, "),
+                Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to move to the next input, "),
+                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to determine the resistor."),
+            ],
+            Style::default(),
+        );
         let text = Text::from(Line::from(msg)).style(style);
         let help_message = Paragraph::new(text);
         frame.render_widget(help_message, help_msg_rect);
@@ -128,10 +107,7 @@ impl App {
             .resistance_input
             .visual_scroll(resistance_width as usize);
         let resistance_paragraph = Paragraph::new(self.resistance_input.value())
-            .style(match self.input_mode {
-                InputMode::Normal => Style::default(),
-                InputMode::Editing => Style::default().fg(Color::Yellow),
-            })
+            .style(Style::default().fg(Color::Yellow))
             .scroll((0, resistance_scroll as u16))
             .block(
                 Block::default()
@@ -143,10 +119,7 @@ impl App {
         let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
         let tolerance_scroll = self.tolerance_input.visual_scroll(tolerance_width as usize);
         let tolerance_paragraph = Paragraph::new(self.tolerance_input.value())
-            .style(match self.input_mode {
-                InputMode::Normal => Style::default(),
-                InputMode::Editing => Style::default().fg(Color::Yellow),
-            })
+            .style(Style::default().fg(Color::Yellow))
             .scroll((0, tolerance_scroll as u16))
             .block(Block::default().borders(Borders::ALL).title(" Tolerance "));
         frame.render_widget(tolerance_paragraph, tolerance_rect);
@@ -154,34 +127,23 @@ impl App {
         let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
         let tcr_scroll = self.tcr_input.visual_scroll(tcr_width as usize);
         let tcr_paragraph = Paragraph::new(self.tcr_input.value())
-            .style(match self.input_mode {
-                InputMode::Normal => Style::default(),
-                InputMode::Editing => Style::default().fg(Color::Yellow),
-            })
+            .style(Style::default().fg(Color::Yellow))
             .scroll((0, tcr_scroll as u16))
             .block(Block::default().borders(Borders::ALL).title(" TCR "));
         frame.render_widget(tcr_paragraph, tcr_rect);
 
-        match self.input_mode {
-            InputMode::Normal =>
-                // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-                {}
-
-            InputMode::Editing => {
-                // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-                let (rect, input, scroll) = match self.focus {
-                    0 => (resistance_rect, &self.resistance_input, resistance_scroll),
-                    1 => (tolerance_rect, &self.tolerance_input, tolerance_scroll),
-                    _ => (tcr_rect, &self.tcr_input, tcr_scroll),
-                };
-                frame.set_cursor_position((
-                    // Put cursor past the end of the input text
-                    rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
-                    // Move one line down, from the border to the input line
-                    rect.y + 1,
-                ));
-            }
-        }
+        // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+        let (rect, input, scroll) = match self.focus {
+            0 => (resistance_rect, &self.resistance_input, resistance_scroll),
+            1 => (tolerance_rect, &self.tolerance_input, tolerance_scroll),
+            _ => (tcr_rect, &self.tcr_input, tcr_scroll),
+        };
+        frame.set_cursor_position((
+            // Put cursor past the end of the input text
+            rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
+            // Move one line down, from the border to the input line
+            rect.y + 1,
+        ));
 
         match &self.resistor {
             Some(resistor) => {
@@ -221,101 +183,84 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
-        match self.input_mode {
-            InputMode::Normal => match key.code {
-                KeyCode::Char('e') => {
-                    self.input_mode = InputMode::Editing;
-                }
-                KeyCode::Char('q') => {
-                    self.quit();
-                }
-                _ => {}
-            },
-            InputMode::Editing => match key.code {
-                KeyCode::Enter => {
-                    let resistance_input_value = self.resistance_input.value();
-                    if resistance_input_value == "q" {
-                        self.quit();
-                    } else {
-                        self.resistor = None;
+        match key.code {
+            KeyCode::Enter => {
+                let resistance_input_value = self.resistance_input.value();
+                self.resistor = None;
 
-                        let resistance = match resistance_input_value.parse::<f64>() {
-                            Ok(t) => Ok(t),
-                            Err(e) => Err(format!("invalid input for resistance: {}", e)),
-                        };
+                let resistance = match resistance_input_value.parse::<f64>() {
+                    Ok(t) => Ok(t),
+                    Err(e) => Err(format!("invalid input for resistance: {}", e)),
+                };
 
-                        let tolerance_input_value = self.tolerance_input.value();
-                        let tolerance = if tolerance_input_value.is_empty() {
-                            Ok(None)
-                        } else {
-                            match tolerance_input_value.parse::<f64>() {
-                                Ok(t) => Ok(Some(t)),
-                                Err(e) => Err(format!("invalid input for tolerance: {}", e)),
+                let tolerance_input_value = self.tolerance_input.value();
+                let tolerance = if tolerance_input_value.is_empty() {
+                    Ok(None)
+                } else {
+                    match tolerance_input_value.parse::<f64>() {
+                        Ok(t) => Ok(Some(t)),
+                        Err(e) => Err(format!("invalid input for tolerance: {}", e)),
+                    }
+                };
+
+                let tcr_input_value = self.tcr_input.value();
+                let tcr = if tcr_input_value.is_empty() {
+                    Ok(None)
+                } else {
+                    match tcr_input_value.parse::<u32>() {
+                        Ok(t) => Ok(Some(t)),
+                        Err(e) => Err(format!("invalid input for tcr: {}", e)),
+                    }
+                };
+
+                match (resistance, tolerance, tcr) {
+                    (Ok(resistance), Ok(tolerance), Ok(tcr)) => {
+                        match Resistor::determine(resistance, tolerance, tcr) {
+                            Ok(resitor) => {
+                                self.error = None;
+                                self.resistor = Some(resitor)
                             }
-                        };
-
-                        let tcr_input_value = self.tcr_input.value();
-                        let tcr = if tcr_input_value.is_empty() {
-                            Ok(None)
-                        } else {
-                            match tcr_input_value.parse::<u32>() {
-                                Ok(t) => Ok(Some(t)),
-                                Err(e) => Err(format!("invalid input for tcr: {}", e)),
-                            }
-                        };
-
-                        match (resistance, tolerance, tcr) {
-                            (Ok(resistance), Ok(tolerance), Ok(tcr)) => {
-                                match Resistor::determine(resistance, tolerance, tcr) {
-                                    Ok(resitor) => {
-                                        self.error = None;
-                                        self.resistor = Some(resitor)
-                                    }
-                                    Err(e) => {
-                                        self.error = Some(format!(
-                                            "could not determine a resistor for these inputs: {}",
-                                            e
-                                        ));
-                                    }
-                                }
-                            }
-                            (res, tol, tcr) => {
-                                let mut error_msg: String = String::from("");
-                                if let Err(res_error) = res {
-                                    error_msg.push_str(res_error.to_string().as_str());
-                                }
-                                if let Err(tol_error) = tol {
-                                    error_msg.push('\n');
-                                    error_msg.push_str(tol_error.to_string().as_str());
-                                }
-                                if let Err(tcr_error) = tcr {
-                                    error_msg.push('\n');
-                                    error_msg.push_str(tcr_error.to_string().as_str());
-                                }
-                                if error_msg.is_empty() {
-                                    self.error = None
-                                } else {
-                                    self.error = Some(error_msg)
-                                }
+                            Err(e) => {
+                                self.error = Some(format!(
+                                    "could not determine a resistor for these inputs: {}",
+                                    e
+                                ));
                             }
                         }
-
-                        self.reset_inputs();
+                    }
+                    (res, tol, tcr) => {
+                        let mut error_msg: String = String::from("");
+                        if let Err(res_error) = res {
+                            error_msg.push_str(res_error.to_string().as_str());
+                        }
+                        if let Err(tol_error) = tol {
+                            error_msg.push('\n');
+                            error_msg.push_str(tol_error.to_string().as_str());
+                        }
+                        if let Err(tcr_error) = tcr {
+                            error_msg.push('\n');
+                            error_msg.push_str(tcr_error.to_string().as_str());
+                        }
+                        if error_msg.is_empty() {
+                            self.error = None
+                        } else {
+                            self.error = Some(error_msg)
+                        }
                     }
                 }
-                KeyCode::Tab => self.focus = (self.focus + 1) % 3,
-                KeyCode::Esc => {
-                    self.input_mode = InputMode::Normal;
-                }
-                _ => {
-                    let target_input = match self.focus {
-                        0 => &mut self.resistance_input,
-                        1 => &mut self.tolerance_input,
-                        _ => &mut self.tcr_input,
-                    };
-                    target_input.handle_event(&Event::Key(key));
-                }
-            },
+
+                self.reset_inputs();
+            }
+            KeyCode::Tab => self.focus = (self.focus + 1) % 3,
+            KeyCode::Esc => self.quit(),
+            _ => {
+                let target_input = match self.focus {
+                    0 => &mut self.resistance_input,
+                    1 => &mut self.tolerance_input,
+                    _ => &mut self.tcr_input,
+                };
+                target_input.handle_event(&Event::Key(key));
+            }
         }
     }
 

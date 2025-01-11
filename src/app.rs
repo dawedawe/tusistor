@@ -333,14 +333,14 @@ impl App {
 
 fn barchart(bands: &[(Color, String)], ohm: f64, tolerance: f64, tcr: Option<u32>) -> BarChart {
     let bars: Vec<Bar> = bands.iter().map(|color| bar(color)).collect();
-    let mut s = format!("Resistance: {}Ω - Tolerance: {}%", ohm, tolerance * 100.0);
+    let mut s = format!("Resistance: {}Ω - Tolerance: ±{}%", ohm, tolerance * 100.0);
     if let Some(tcr) = tcr {
-        s.push_str(format!(" - TCR: {}", tcr).as_str());
+        s.push_str(format!(" - TCR: {}(ppm/K)", tcr).as_str());
     }
     let title = Line::from(s).centered();
     BarChart::default()
         .data(BarGroup::default().bars(&bars))
-        .block(Block::new().title(title))
+        .block(Block::new().title(title).borders(Borders::all()))
         .bar_width(10)
 }
 

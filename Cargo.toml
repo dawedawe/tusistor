@@ -1,11 +1,19 @@
 [workspace]
 
-[package]
-name = "tusistor"
-version = "0.1.0"
+[workspace.package]
 authors = ["dawe <dawedawe@posteo.de>"]
 license = "MIT"
 edition = "2021"
+repository = "https://github.com/dawedawe/tusistor"
+
+[package]
+name = "tusistor"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "This is a Ratatui app to calculate the color code of electrical resistors."
 
 [dependencies]
 crossterm = "0.28.1"

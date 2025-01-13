@@ -1,6 +1,7 @@
 # tusistor
 
-This is a [Ratatui] app to calculate the color code of electrical resistors.
+This is a [Ratatui] app to calculate the color codes of electrical resistors.  
+The input of tolerance and/or TCR are optional depending on your resistance input.
 
 ![tusistor.png](./tusistor.png)
 

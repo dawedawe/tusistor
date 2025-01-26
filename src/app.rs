@@ -287,11 +287,18 @@ fn try_determine_resistor(
 
 fn barchart(bands: &[(Color, String)], ohm: f64, tolerance: f64, tcr: Option<u32>) -> BarChart {
     let bars: Vec<Bar> = bands.iter().map(|color| bar(color)).collect();
-    let mut s = format!("Resistance: {}Ω - Tolerance: ±{}%", ohm, tolerance * 100.0);
-    if let Some(tcr) = tcr {
-        s.push_str(format!(" - TCR: {}(ppm/K)", tcr).as_str());
-    }
-    let title = Line::from(s).centered();
+    let tcr = if let Some(tcr) = tcr {
+        format!(" - TCR: {}(ppm/K)", tcr)
+    } else {
+        String::from("")
+    };
+    let title = format!(
+        "Resistance: {}Ω - Tolerance: ±{}%{}",
+        ohm,
+        tolerance * 100.0,
+        tcr
+    );
+    let title = Line::from(title).centered();
     BarChart::default()
         .data(BarGroup::default().bars(&bars))
         .block(Block::new().title(title).borders(Borders::all()))

@@ -156,7 +156,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
         None => {
             if let Some(e) = &model.error {
                 let text = Text::from(e.to_string());
-                let error_message = Paragraph::new(text);
+                let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
                 frame.render_widget(error_message, main_rect);
             }
         }

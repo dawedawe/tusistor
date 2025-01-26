@@ -197,7 +197,11 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
 pub fn update(model: &mut Model, msg: Msg) {
     match msg {
         Msg::Determine => {
-            match try_determine_resistor(model) {
+            match try_determine_resistor(
+                model.resistance_input.value(),
+                model.tolerance_input.value(),
+                model.tcr_input.value(),
+            ) {
                 Ok(resistor) => {
                     model.resistor = Some(resistor);
                     model.error = None;
@@ -221,27 +225,29 @@ pub fn update(model: &mut Model, msg: Msg) {
     }
 }
 
-fn try_determine_resistor(model: &Model) -> Result<Resistor, String> {
-    let resistance = match model.resistance_input.value().parse::<f64>() {
+fn try_determine_resistor(
+    resistance_input: &str,
+    tolerance_input: &str,
+    tcr_input: &str,
+) -> Result<Resistor, String> {
+    let resistance = match resistance_input.parse::<f64>() {
         Ok(t) => Ok(t),
         Err(e) => Err(format!("invalid input for resistance: {}", e)),
     };
 
-    let tolerance_input_value = model.tolerance_input.value();
-    let tolerance = if tolerance_input_value.is_empty() {
+    let tolerance = if tolerance_input.is_empty() {
         Ok(None)
     } else {
-        match tolerance_input_value.parse::<f64>() {
+        match tolerance_input.parse::<f64>() {
             Ok(t) => Ok(Some(t)),
             Err(e) => Err(format!("invalid input for tolerance: {}", e)),
         }
     };
 
-    let tcr_input_value = model.tcr_input.value();
-    let tcr = if tcr_input_value.is_empty() {
+    let tcr = if tcr_input.is_empty() {
         Ok(None)
     } else {
-        match tcr_input_value.parse::<u32>() {
+        match tcr_input.parse::<u32>() {
             Ok(t) => Ok(Some(t)),
             Err(e) => Err(format!("invalid input for tcr: {}", e)),
         }

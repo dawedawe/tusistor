@@ -110,7 +110,11 @@ pub fn view(model: &Model, frame: &mut Frame) {
     let tolerance_paragraph = Paragraph::new(model.tolerance_input.value())
         .style(Style::default().fg(Color::Yellow))
         .scroll((0, tolerance_scroll as u16))
-        .block(Block::default().borders(Borders::ALL).title(" Tolerance (%) "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" Tolerance (%) "),
+        );
     frame.render_widget(tolerance_paragraph, tolerance_rect);
 
     let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
@@ -118,7 +122,11 @@ pub fn view(model: &Model, frame: &mut Frame) {
     let tcr_paragraph = Paragraph::new(model.tcr_input.value())
         .style(Style::default().fg(Color::Yellow))
         .scroll((0, tcr_scroll as u16))
-        .block(Block::default().borders(Borders::ALL).title(" TCR (ppm/K) "));
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(" TCR (ppm/K) "),
+        );
     frame.render_widget(tcr_paragraph, tcr_rect);
 
     // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering

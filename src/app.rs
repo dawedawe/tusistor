@@ -142,24 +142,20 @@ pub fn view(model: &Model, frame: &mut Frame) {
         rect.y + 1,
     ));
 
-    match &model.resistor {
-        Some(resistor) => {
-            let colors = resistor
-                .bands()
-                .iter()
-                .map(|c| rusistor_color_to_ratatui_color(c))
-                .collect::<Vec<(Color, String)>>();
-            let specs = resistor.specs();
-            let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
-            frame.render_widget(chart, main_rect);
-        }
-        None => {
-            if let Some(e) = &model.error {
-                let text = Text::from(e.to_string());
-                let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
-                frame.render_widget(error_message, main_rect);
-            }
-        }
+    if let Some(resistor) = &model.resistor {
+        let colors = resistor
+            .bands()
+            .iter()
+            .map(|c| rusistor_color_to_ratatui_color(c))
+            .collect::<Vec<(Color, String)>>();
+        let specs = resistor.specs();
+        let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
+        frame.render_widget(chart, main_rect);
+    }
+    if let Some(e) = &model.error {
+        let text = Text::from(e.to_string());
+        let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
+        frame.render_widget(error_message, main_rect);
     }
 }
 
@@ -225,7 +221,37 @@ pub fn update(model: &mut Model, msg: Msg) {
             model.focus = 0;
         }
         Msg::Focus { idx: i } => {
-            model.focus = i;
+            model.error = match model.focus {
+                0 => {
+                    let value = model.resistance_input.value();
+                    if value.trim().is_empty() {
+                        None
+                    } else {
+                        value.parse::<f64>().err().map(|err| err.to_string())
+                    }
+                }
+                1 => {
+                    let value = model.tolerance_input.value();
+                    if value.trim().is_empty() {
+                        None
+                    } else {
+                        value.parse::<f64>().err().map(|err| err.to_string())
+                    }
+                }
+                _ => {
+                    let value = model.tcr_input.value();
+                    if value.trim().is_empty() {
+                        None
+                    } else {
+                        value.parse::<u32>().err().map(|err| err.to_string())
+                    }
+                }
+            };
+            if model.error.is_none() {
+                model.focus = i;
+            } else {
+                model.resistor = None;
+            }
         }
         Msg::Exit => {
             model.running = false;

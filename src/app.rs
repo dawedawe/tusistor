@@ -11,13 +11,31 @@ use rusistor::{self, Resistor};
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
 
+#[derive(Debug, Default)]
+pub enum InputFocus {
+    #[default]
+    Resistance,
+    Tolerance,
+    Tcr,
+}
+
+impl InputFocus {
+    fn next(&self) -> InputFocus {
+        match self {
+            InputFocus::Resistance => InputFocus::Tolerance,
+            InputFocus::Tolerance => InputFocus::Tcr,
+            InputFocus::Tcr => InputFocus::Resistance,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Model {
     pub running: bool,
     pub resistance_input: Input,
     pub tolerance_input: Input,
     pub tcr_input: Input,
-    pub focus: usize,
+    pub focus: InputFocus,
     pub resistor: Option<Resistor>,
     pub error: Option<String>,
 }
@@ -29,7 +47,7 @@ impl Default for Model {
             resistance_input: Input::default(),
             tolerance_input: Input::default(),
             tcr_input: Input::default(),
-            focus: 0,
+            focus: InputFocus::default(),
             resistor: None,
             error: None,
         }
@@ -131,9 +149,9 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
     // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
     let (rect, input, scroll) = match model.focus {
-        0 => (resistance_rect, &model.resistance_input, resistance_scroll),
-        1 => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
-        _ => (tcr_rect, &model.tcr_input, tcr_scroll),
+        InputFocus::Resistance => (resistance_rect, &model.resistance_input, resistance_scroll),
+        InputFocus::Tolerance => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
+        InputFocus::Tcr => (tcr_rect, &model.tcr_input, tcr_scroll),
     };
     frame.set_cursor_position((
         // Put cursor past the end of the input text
@@ -161,7 +179,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
 pub enum Msg {
     Determine,
-    Focus { idx: usize },
+    FocusNext,
     Exit,
 }
 
@@ -176,15 +194,13 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
     match key.code {
         KeyCode::Enter => Some(Msg::Determine),
-        KeyCode::Tab => Some(Msg::Focus {
-            idx: (model.focus + 1) % 3,
-        }),
+        KeyCode::Tab => Some(Msg::FocusNext),
         KeyCode::Esc => Some(Msg::Exit),
         _ => {
             let target_input = match model.focus {
-                0 => &mut model.resistance_input,
-                1 => &mut model.tolerance_input,
-                _ => &mut model.tcr_input,
+                InputFocus::Resistance => &mut model.resistance_input,
+                InputFocus::Tolerance => &mut model.tolerance_input,
+                InputFocus::Tcr => &mut model.tcr_input,
             };
             target_input.handle_event(&Event::Key(key));
             None
@@ -212,11 +228,11 @@ pub fn update(model: &mut Model, msg: Msg) {
             model.resistance_input.reset();
             model.tolerance_input.reset();
             model.tcr_input.reset();
-            model.focus = 0;
+            model.focus = InputFocus::Resistance;
         }
-        Msg::Focus { idx: i } => {
+        Msg::FocusNext => {
             model.error = match model.focus {
-                0 => {
+                InputFocus::Resistance => {
                     let value = model.resistance_input.value();
                     if value.trim().is_empty() {
                         None
@@ -224,7 +240,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                         value.parse::<f64>().err().map(|err| err.to_string())
                     }
                 }
-                1 => {
+                InputFocus::Tolerance => {
                     let value = model.tolerance_input.value();
                     if value.trim().is_empty() {
                         None
@@ -232,7 +248,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                         value.parse::<f64>().err().map(|err| err.to_string())
                     }
                 }
-                _ => {
+                InputFocus::Tcr => {
                     let value = model.tcr_input.value();
                     if value.trim().is_empty() {
                         None
@@ -242,7 +258,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                 }
             };
             if model.error.is_none() {
-                model.focus = i;
+                model.focus = model.focus.next();
             } else {
                 model.resistor = None;
             }

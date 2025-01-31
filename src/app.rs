@@ -166,15 +166,9 @@ pub enum Msg {
 }
 
 pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
-    handle_crossterm_events(model)
-}
-
-fn handle_crossterm_events(model: &mut Model) -> Result<Option<Msg>> {
     match event::read()? {
         // it's important to check KeyEventKind::Press to avoid handling key release events
         Event::Key(key) if key.kind == KeyEventKind::Press => Result::Ok(on_key_event(model, key)),
-        Event::Mouse(_) => Result::Ok(None),
-        Event::Resize(_, _) => Result::Ok(None),
         _ => Result::Ok(None),
     }
 }

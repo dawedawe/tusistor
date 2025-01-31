@@ -27,6 +27,14 @@ impl InputFocus {
             InputFocus::Tcr => InputFocus::Resistance,
         }
     }
+
+    fn prev(&self) -> InputFocus {
+        match self {
+            InputFocus::Resistance => InputFocus::Tcr,
+            InputFocus::Tolerance => InputFocus::Resistance,
+            InputFocus::Tcr => InputFocus::Tolerance,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -181,6 +189,7 @@ pub enum Msg {
     Determine,
     FocusNext,
     Exit,
+    FocusPrevious,
 }
 
 pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
@@ -195,6 +204,7 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
     match key.code {
         KeyCode::Enter => Some(Msg::Determine),
         KeyCode::Tab => Some(Msg::FocusNext),
+        KeyCode::BackTab => Some(Msg::FocusPrevious),
         KeyCode::Esc => Some(Msg::Exit),
         _ => {
             let target_input = match model.focus {
@@ -230,7 +240,7 @@ pub fn update(model: &mut Model, msg: Msg) {
             model.tcr_input.reset();
             model.focus = InputFocus::Resistance;
         }
-        Msg::FocusNext => {
+        Msg::FocusNext | Msg::FocusPrevious => {
             model.error = match model.focus {
                 InputFocus::Resistance => {
                     let value = model.resistance_input.value();
@@ -258,7 +268,10 @@ pub fn update(model: &mut Model, msg: Msg) {
                 }
             };
             if model.error.is_none() {
-                model.focus = model.focus.next();
+                model.focus = match msg {
+                    Msg::FocusNext => model.focus.next(),
+                    _ => model.focus.prev(),
+                };
             } else {
                 model.resistor = None;
             }

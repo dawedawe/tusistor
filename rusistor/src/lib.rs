@@ -1,5 +1,8 @@
 use core::panic;
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    fmt::{self, Display, Formatter},
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Color {
@@ -123,6 +126,27 @@ impl From<i32> for Color {
             -3 => Color::Pink,
             _ => panic!("invalid value {} given to Color::from", value),
         }
+    }
+}
+
+impl Display for Color {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let s = match self {
+            Color::Black => String::from("black"),
+            Color::Brown => String::from("brown"),
+            Color::Red => String::from("red"),
+            Color::Orange => String::from("orange"),
+            Color::Yellow => String::from("yellow"),
+            Color::Green => String::from("green"),
+            Color::Blue => String::from("blue"),
+            Color::Violet => String::from("violet"),
+            Color::Grey => String::from("grey"),
+            Color::White => String::from("white"),
+            Color::Gold => String::from("gold"),
+            Color::Silver => String::from("silver"),
+            Color::Pink => String::from("pink"),
+        };
+        write!(f, "{}", s)
     }
 }
 

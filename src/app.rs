@@ -2,9 +2,12 @@ use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span, Text},
-    widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
+    widgets::{
+        Bar, BarChart, BarGroup, Block, Borders, List, ListDirection, ListItem, ListState,
+        Paragraph, Tabs,
+    },
     Frame,
 };
 use rusistor::{self, Resistor};
@@ -40,156 +43,247 @@ impl InputFocus {
 #[derive(Debug)]
 pub struct Model {
     pub running: bool,
+    pub selected_tab_index: usize,
     pub resistance_input: Input,
     pub tolerance_input: Input,
     pub tcr_input: Input,
     pub focus: InputFocus,
     pub resistor: Option<Resistor>,
     pub error: Option<String>,
+    pub selected_band: usize,
+    pub selected_in_bands: [usize; 6],
 }
 
 impl Default for Model {
     fn default() -> Model {
         Model {
             running: true,
+            selected_tab_index: 0,
             resistance_input: Input::default(),
             tolerance_input: Input::default(),
             tcr_input: Input::default(),
             focus: InputFocus::default(),
             resistor: None,
             error: None,
+            selected_band: 0,
+            selected_in_bands: [0, 0, 0, 0, 0, 0],
         }
     }
 }
 
-pub fn view(model: &Model, frame: &mut Frame) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(2)
-        .constraints(
-            [
-                Constraint::Length(1),
-                Constraint::Length(3),
-                Constraint::Min(1),
-            ]
-            .as_ref(),
-        )
-        .split(frame.area());
-    let input_rects = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Ratio(1, 3),
-            Constraint::Ratio(1, 3),
-            Constraint::Ratio(1, 3),
-        ])
-        .split(chunks[1]);
+fn tabs<'a>(selected: usize) -> Tabs<'a> {
+    Tabs::new(vec!["specs to color codes", "color codes to specs"])
+        .padding(" ", " ")
+        .select(selected)
+}
 
-    let main_rects = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(10),
-            Constraint::Percentage(80),
-            Constraint::Percentage(10),
-        ])
-        .split(chunks[2]);
+fn band_list<'a>(number: usize, is_focused: bool) -> List<'a> {
+    let items = [
+        rusistor::Color::Black,
+        rusistor::Color::Brown,
+        rusistor::Color::Red,
+        rusistor::Color::Orange,
+        rusistor::Color::Yellow,
+        rusistor::Color::Green,
+        rusistor::Color::Blue,
+        rusistor::Color::Violet,
+        rusistor::Color::Grey,
+        rusistor::Color::White,
+        rusistor::Color::Gold,
+        rusistor::Color::Silver,
+        rusistor::Color::Pink,
+    ]
+    .iter()
+    .map(|color| {
+        let (c, s) = rusistor_color_to_ratatui_color(color);
+        ListItem::new(s).bg(c)
+    });
 
-    let help_msg_rect = chunks[0];
-    let resistance_rect = input_rects[0];
-    let tolerance_rect = input_rects[1];
-    let tcr_rect = input_rects[2];
-    let main_rect = main_rects[1];
-
-    let (msg, style) = (
-        vec![
-            Span::raw("Press "),
-            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" to exit, "),
-            Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" to move to the next input, "),
-            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" to determine the resistor."),
-        ],
-        Style::default(),
-    );
-    let text = Text::from(Line::from(msg)).style(style);
-    let help_message = Paragraph::new(text);
-    frame.render_widget(help_message, help_msg_rect);
-
-    let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-    let resistance_scroll = model
-        .resistance_input
-        .visual_scroll(resistance_width as usize);
-    let resistance_paragraph = Paragraph::new(model.resistance_input.value())
-        .style(Style::default().fg(Color::Yellow))
-        .scroll((0, resistance_scroll as u16))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Resistance (Ohm) "),
-        );
-    frame.render_widget(resistance_paragraph, resistance_rect);
-
-    let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-    let tolerance_scroll = model
-        .tolerance_input
-        .visual_scroll(tolerance_width as usize);
-    let tolerance_paragraph = Paragraph::new(model.tolerance_input.value())
-        .style(Style::default().fg(Color::Yellow))
-        .scroll((0, tolerance_scroll as u16))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Tolerance (%) "),
-        );
-    frame.render_widget(tolerance_paragraph, tolerance_rect);
-
-    let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-    let tcr_scroll = model.tcr_input.visual_scroll(tcr_width as usize);
-    let tcr_paragraph = Paragraph::new(model.tcr_input.value())
-        .style(Style::default().fg(Color::Yellow))
-        .scroll((0, tcr_scroll as u16))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" TCR (ppm/K) "),
-        );
-    frame.render_widget(tcr_paragraph, tcr_rect);
-
-    // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-    let (rect, input, scroll) = match model.focus {
-        InputFocus::Resistance => (resistance_rect, &model.resistance_input, resistance_scroll),
-        InputFocus::Tolerance => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
-        InputFocus::Tcr => (tcr_rect, &model.tcr_input, tcr_scroll),
+    let style = if is_focused {
+        Style::default().add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
     };
-    frame.set_cursor_position((
-        // Put cursor past the end of the input text
-        rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
-        // Move one line down, from the border to the input line
-        rect.y + 1,
-    ));
 
-    if let Some(resistor) = &model.resistor {
-        let colors = resistor
-            .bands()
-            .iter()
-            .map(|c| rusistor_color_to_ratatui_color(c))
-            .collect::<Vec<(Color, String)>>();
-        let specs = resistor.specs();
-        let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
-        frame.render_widget(chart, main_rect);
-    }
-    if let Some(e) = &model.error {
-        let text = Text::from(e.to_string());
-        let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
-        frame.render_widget(error_message, main_rect);
+    List::new(items)
+        .block(
+            Block::bordered()
+                .title(format!(" Band {number} "))
+                .style(style),
+        )
+        .highlight_symbol(">> ")
+        .repeat_highlight_symbol(true)
+        .direction(ListDirection::TopToBottom)
+}
+
+pub fn view(model: &Model, frame: &mut Frame) {
+    if model.selected_tab_index == 0 {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(2)
+            .constraints(
+                [
+                    Constraint::Length(2),
+                    Constraint::Length(1),
+                    Constraint::Length(3),
+                    Constraint::Min(1),
+                ]
+                .as_ref(),
+            )
+            .split(frame.area());
+        let input_rects = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
+                Constraint::Ratio(1, 3),
+            ])
+            .split(chunks[2]);
+
+        let main_rects = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(10),
+                Constraint::Percentage(80),
+                Constraint::Percentage(10),
+            ])
+            .split(chunks[3]);
+
+        let tabs_rect = chunks[0];
+        let help_msg_rect = chunks[1];
+        let resistance_rect = input_rects[0];
+        let tolerance_rect = input_rects[1];
+        let tcr_rect = input_rects[2];
+        let main_rect = main_rects[1];
+
+        let tabs = tabs(model.selected_tab_index);
+        frame.render_widget(tabs, tabs_rect);
+
+        let (msg, style) = (
+            vec![
+                Span::raw("Press "),
+                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to exit, "),
+                Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to move to the next input, "),
+                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(" to determine the resistor."),
+            ],
+            Style::default(),
+        );
+        let text = Text::from(Line::from(msg)).style(style);
+        let help_message = Paragraph::new(text);
+        frame.render_widget(help_message, help_msg_rect);
+
+        let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+        let resistance_scroll = model
+            .resistance_input
+            .visual_scroll(resistance_width as usize);
+        let resistance_paragraph = Paragraph::new(model.resistance_input.value())
+            .style(Style::default().fg(Color::Yellow))
+            .scroll((0, resistance_scroll as u16))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Resistance (Ohm) "),
+            );
+        frame.render_widget(resistance_paragraph, resistance_rect);
+
+        let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+        let tolerance_scroll = model
+            .tolerance_input
+            .visual_scroll(tolerance_width as usize);
+        let tolerance_paragraph = Paragraph::new(model.tolerance_input.value())
+            .style(Style::default().fg(Color::Yellow))
+            .scroll((0, tolerance_scroll as u16))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Tolerance (%) "),
+            );
+        frame.render_widget(tolerance_paragraph, tolerance_rect);
+
+        let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+        let tcr_scroll = model.tcr_input.visual_scroll(tcr_width as usize);
+        let tcr_paragraph = Paragraph::new(model.tcr_input.value())
+            .style(Style::default().fg(Color::Yellow))
+            .scroll((0, tcr_scroll as u16))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" TCR (ppm/K) "),
+            );
+        frame.render_widget(tcr_paragraph, tcr_rect);
+
+        // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+        let (rect, input, scroll) = match model.focus {
+            InputFocus::Resistance => (resistance_rect, &model.resistance_input, resistance_scroll),
+            InputFocus::Tolerance => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
+            InputFocus::Tcr => (tcr_rect, &model.tcr_input, tcr_scroll),
+        };
+        frame.set_cursor_position((
+            // Put cursor past the end of the input text
+            rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
+            // Move one line down, from the border to the input line
+            rect.y + 1,
+        ));
+
+        if let Some(resistor) = &model.resistor {
+            let colors = resistor
+                .bands()
+                .iter()
+                .map(|c| rusistor_color_to_ratatui_color(c))
+                .collect::<Vec<(Color, String)>>();
+            let specs = resistor.specs();
+            let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
+            frame.render_widget(chart, main_rect);
+        }
+        if let Some(e) = &model.error {
+            let text = Text::from(e.to_string());
+            let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
+            frame.render_widget(error_message, main_rect);
+        }
+    } else {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(2)
+            .constraints([Constraint::Length(2), Constraint::Min(13)].as_ref())
+            .split(frame.area());
+        let tabs_rect = chunks[0];
+        let bands_rect = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+            ])
+            .split(chunks[1]);
+
+        let tabs = tabs(model.selected_tab_index);
+        frame.render_widget(tabs, tabs_rect);
+
+        for i in 0..model.selected_in_bands.len() {
+            let mut state = ListState::default().with_selected(Some(model.selected_in_bands[i]));
+            let is_focused = model.selected_band == i;
+            let list = band_list(i + 1, is_focused);
+            frame.render_stateful_widget(list, bands_rect[i], &mut state);
+        }
     }
 }
 
 pub enum Msg {
+    ToggleTab,
     Determine,
-    FocusNext,
+    NextSpecInput,
+    PrevSpecInput,
+    NextBand,
+    PrevBand,
+    NextColor,
+    PrevColor,
     Exit,
-    FocusPrevious,
 }
 
 pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
@@ -202,9 +296,14 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
     match key.code {
+        KeyCode::Right | KeyCode::Left => Some(Msg::ToggleTab),
         KeyCode::Enter => Some(Msg::Determine),
-        KeyCode::Tab => Some(Msg::FocusNext),
-        KeyCode::BackTab => Some(Msg::FocusPrevious),
+        KeyCode::Tab if model.selected_tab_index == 0 => Some(Msg::NextSpecInput),
+        KeyCode::Tab if model.selected_tab_index == 1 => Some(Msg::NextBand),
+        KeyCode::BackTab if model.selected_tab_index == 0 => Some(Msg::PrevSpecInput),
+        KeyCode::BackTab if model.selected_tab_index == 1 => Some(Msg::PrevBand),
+        KeyCode::Up if model.selected_tab_index == 1 => Some(Msg::PrevColor),
+        KeyCode::Down if model.selected_tab_index == 1 => Some(Msg::NextColor),
         KeyCode::Esc => Some(Msg::Exit),
         _ => {
             let target_input = match model.focus {
@@ -220,6 +319,7 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
 
 pub fn update(model: &mut Model, msg: Msg) {
     match msg {
+        Msg::ToggleTab => model.selected_tab_index = (model.selected_tab_index + 1) % 2,
         Msg::Determine => {
             match try_determine_resistor(
                 model.resistance_input.value(),
@@ -240,7 +340,7 @@ pub fn update(model: &mut Model, msg: Msg) {
             model.tcr_input.reset();
             model.focus = InputFocus::Resistance;
         }
-        Msg::FocusNext | Msg::FocusPrevious => {
+        Msg::NextSpecInput | Msg::PrevSpecInput => {
             model.error = match model.focus {
                 InputFocus::Resistance => {
                     let value = model.resistance_input.value();
@@ -269,7 +369,7 @@ pub fn update(model: &mut Model, msg: Msg) {
             };
             if model.error.is_none() {
                 model.focus = match msg {
-                    Msg::FocusNext => model.focus.next(),
+                    Msg::NextSpecInput => model.focus.next(),
                     _ => model.focus.prev(),
                 };
             } else {
@@ -278,6 +378,16 @@ pub fn update(model: &mut Model, msg: Msg) {
         }
         Msg::Exit => {
             model.running = false;
+        }
+        Msg::NextBand => model.selected_band = (model.selected_band + 1) % 6,
+        Msg::PrevBand => model.selected_band = (model.selected_band + 5) % 6,
+        Msg::NextColor => {
+            model.selected_in_bands[model.selected_band] =
+                (model.selected_in_bands[model.selected_band] + 1) % 13;
+        }
+        Msg::PrevColor => {
+            model.selected_in_bands[model.selected_band] =
+                (model.selected_in_bands[model.selected_band] + 12) % 13;
         }
     }
 }
@@ -376,18 +486,21 @@ fn bar_style(color: &Color) -> Style {
 
 fn rusistor_color_to_ratatui_color(color: &rusistor::Color) -> (Color, String) {
     match color {
-        rusistor::Color::Black => (Color::Black, String::from("black")),
-        rusistor::Color::Brown => (Color::Rgb(165, 42, 42), String::from("brown")),
-        rusistor::Color::Red => (Color::Red, String::from("red")),
-        rusistor::Color::Orange => (Color::Rgb(255, 165, 0), String::from("organge")),
-        rusistor::Color::Yellow => (Color::Yellow, String::from("yellow")),
-        rusistor::Color::Green => (Color::Green, String::from("green")),
-        rusistor::Color::Blue => (Color::Blue, String::from("blue")),
-        rusistor::Color::Violet => (Color::Rgb(148, 0, 211), String::from("violet")),
-        rusistor::Color::Grey => (Color::Gray, String::from("grey")),
-        rusistor::Color::White => (Color::White, String::from("white")),
-        rusistor::Color::Gold => (Color::Rgb(255, 215, 0), String::from("gold")),
-        rusistor::Color::Silver => (Color::Rgb(192, 192, 192), String::from("silver")),
-        rusistor::Color::Pink => (Color::Rgb(255, 105, 180), String::from("pink")),
+        rusistor::Color::Black => (Color::Black, rusistor::Color::Black.to_string()),
+        rusistor::Color::Brown => (Color::Rgb(165, 42, 42), rusistor::Color::Brown.to_string()),
+        rusistor::Color::Red => (Color::Red, rusistor::Color::Red.to_string()),
+        rusistor::Color::Orange => (Color::Rgb(255, 165, 0), rusistor::Color::Orange.to_string()),
+        rusistor::Color::Yellow => (Color::Yellow, rusistor::Color::Yellow.to_string()),
+        rusistor::Color::Green => (Color::Green, rusistor::Color::Green.to_string()),
+        rusistor::Color::Blue => (Color::Blue, rusistor::Color::Blue.to_string()),
+        rusistor::Color::Violet => (Color::Rgb(148, 0, 211), rusistor::Color::Violet.to_string()),
+        rusistor::Color::Grey => (Color::Gray, rusistor::Color::Grey.to_string()),
+        rusistor::Color::White => (Color::White, rusistor::Color::White.to_string()),
+        rusistor::Color::Gold => (Color::Rgb(255, 215, 0), rusistor::Color::Gold.to_string()),
+        rusistor::Color::Silver => (
+            Color::Rgb(192, 192, 192),
+            rusistor::Color::Silver.to_string(),
+        ),
+        rusistor::Color::Pink => (Color::Rgb(255, 105, 180), rusistor::Color::Pink.to_string()),
     }
 }

@@ -601,7 +601,7 @@ impl Resistor {
                 band5,
             })
         } else {
-            Err(String::from("no valid 4-band resistor"))
+            Err(String::from("no valid 5-band resistor"))
         }
     }
 
@@ -629,7 +629,7 @@ impl Resistor {
                 band6,
             })
         } else {
-            Err(String::from("no valid 4-band resistor"))
+            Err(String::from("no valid 6-band resistor"))
         }
     }
 

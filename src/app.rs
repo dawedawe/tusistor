@@ -66,7 +66,7 @@ impl Default for Model {
             resistor: None,
             error: None,
             selected_band: 0,
-            selected_in_bands: [0, 0, 0, 0, 0, 0],
+            selected_in_bands: [1, 0, 0, 0, 1, 0],
         }
     }
 }
@@ -247,7 +247,15 @@ pub fn view(model: &Model, frame: &mut Frame) {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(2)
-            .constraints([Constraint::Length(2), Constraint::Min(13)].as_ref())
+            .constraints(
+                [
+                    Constraint::Length(2),
+                    Constraint::Max(3),
+                    Constraint::Max(15),
+                    Constraint::Min(1),
+                ]
+                .as_ref(),
+            )
             .split(frame.area());
         let tabs_rect = chunks[0];
         let bands_rect = Layout::default()
@@ -260,10 +268,31 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 Constraint::Ratio(1, 6),
                 Constraint::Ratio(1, 6),
             ])
-            .split(chunks[1]);
+            .split(chunks[2]);
 
         let tabs = tabs(model.selected_tab_index);
         frame.render_widget(tabs, tabs_rect);
+
+        let resistance = match rusistor::Resistor::try_create(vec![
+            (index_to_color(model.selected_in_bands[0])),
+            (index_to_color(model.selected_in_bands[1])),
+            (index_to_color(model.selected_in_bands[2])),
+            (index_to_color(model.selected_in_bands[3])),
+            (index_to_color(model.selected_in_bands[4])),
+            (index_to_color(model.selected_in_bands[5])),
+        ]) {
+            Ok(r) => r.specs().ohm.to_string(),
+            Err(e) => e.to_string(),
+        };
+
+        let resistance_paragraph = Paragraph::new(resistance)
+            .style(Style::default().fg(Color::Yellow))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Tolerance(Ω) "),
+            );
+        frame.render_widget(resistance_paragraph, chunks[1]);
 
         for i in 0..model.selected_in_bands.len() {
             let mut state = ListState::default().with_selected(Some(model.selected_in_bands[i]));
@@ -502,5 +531,24 @@ fn rusistor_color_to_ratatui_color(color: &rusistor::Color) -> (Color, String) {
             rusistor::Color::Silver.to_string(),
         ),
         rusistor::Color::Pink => (Color::Rgb(255, 105, 180), rusistor::Color::Pink.to_string()),
+    }
+}
+
+fn index_to_color(idx: usize) -> rusistor::Color {
+    match idx {
+        0 => rusistor::Color::Black,
+        1 => rusistor::Color::Brown,
+        2 => rusistor::Color::Red,
+        3 => rusistor::Color::Orange,
+        4 => rusistor::Color::Yellow,
+        5 => rusistor::Color::Green,
+        6 => rusistor::Color::Blue,
+        7 => rusistor::Color::Violet,
+        8 => rusistor::Color::Grey,
+        9 => rusistor::Color::White,
+        10 => rusistor::Color::Gold,
+        11 => rusistor::Color::Silver,
+        12 => rusistor::Color::Pink,
+        _ => panic!("unknown color"),
     }
 }

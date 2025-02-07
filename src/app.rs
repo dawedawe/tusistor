@@ -40,10 +40,35 @@ impl InputFocus {
     }
 }
 
+#[derive(Debug, Default)]
+pub enum SelectedTab {
+    #[default]
+    ColorCodesToSpecs,
+    SpecsToColorCodes,
+}
+
+impl SelectedTab {
+    fn toggle(&self) -> SelectedTab {
+        match self {
+            SelectedTab::ColorCodesToSpecs => SelectedTab::SpecsToColorCodes,
+            SelectedTab::SpecsToColorCodes => SelectedTab::ColorCodesToSpecs,
+        }
+    }
+}
+
+impl From<&SelectedTab> for Option<usize> {
+    fn from(selected_tab: &SelectedTab) -> Self {
+        match selected_tab {
+            SelectedTab::ColorCodesToSpecs => Some(0),
+            SelectedTab::SpecsToColorCodes => Some(1),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Model {
     pub running: bool,
-    pub selected_tab_index: usize,
+    pub selected_tab: SelectedTab,
     pub resistance_input: Input,
     pub tolerance_input: Input,
     pub tcr_input: Input,
@@ -58,7 +83,7 @@ impl Default for Model {
     fn default() -> Model {
         Model {
             running: true,
-            selected_tab_index: 0,
+            selected_tab: SelectedTab::default(),
             resistance_input: Input::default(),
             tolerance_input: Input::default(),
             tcr_input: Input::default(),
@@ -71,7 +96,7 @@ impl Default for Model {
     }
 }
 
-fn tabs<'a>(selected: usize) -> Tabs<'a> {
+fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
     Tabs::new(vec!["color codes to specs", "specs to color codes"])
         .padding(" ", " ")
         .select(selected)
@@ -117,242 +142,248 @@ fn band_list<'a>(number: usize, is_focused: bool) -> List<'a> {
 }
 
 pub fn view(model: &Model, frame: &mut Frame) {
-    if model.selected_tab_index == 0 {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(2)
-            .constraints(
-                [
-                    Constraint::Length(2),
-                    Constraint::Max(3),
-                    Constraint::Max(15),
-                    Constraint::Min(1),
-                ]
-                .as_ref(),
-            )
-            .split(frame.area());
-        let tabs_rect = chunks[0];
+    match model.selected_tab {
+        SelectedTab::ColorCodesToSpecs => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints(
+                    [
+                        Constraint::Length(2),
+                        Constraint::Max(3),
+                        Constraint::Max(15),
+                        Constraint::Min(1),
+                    ]
+                    .as_ref(),
+                )
+                .split(frame.area());
+            let tabs_rect = chunks[0];
 
-        let spec_chuncks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-            ])
-            .split(chunks[1]);
+            let spec_chuncks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                ])
+                .split(chunks[1]);
 
-        let bands_rect = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-            ])
-            .split(chunks[2]);
+            let bands_rect = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                ])
+                .split(chunks[2]);
 
-        let tabs = tabs(model.selected_tab_index);
-        frame.render_widget(tabs, tabs_rect);
+            let tabs = tabs(&model.selected_tab);
+            frame.render_widget(tabs, tabs_rect);
 
-        let resistor = match rusistor::Resistor::try_create(vec![
-            (index_to_color(model.selected_in_bands[0])),
-            (index_to_color(model.selected_in_bands[1])),
-            (index_to_color(model.selected_in_bands[2])),
-            (index_to_color(model.selected_in_bands[3])),
-            (index_to_color(model.selected_in_bands[4])),
-            (index_to_color(model.selected_in_bands[5])),
-        ]) {
-            Ok(r) => {
-                let specs = r.specs();
-                let s0 = format!("{}Ω", specs.ohm);
-                let s1 = format!("±{}%", (specs.tolerance * 100.0));
-                let s2 = format!("{}Ω", specs.min_ohm);
-                let s3 = format!("{}Ω", specs.max_ohm);
-                let s4 = format!(
-                    "{}(ppm/K)",
-                    specs.tcr.map(|f| f.to_string()).unwrap_or_default()
+            let resistor = match rusistor::Resistor::try_create(vec![
+                (index_to_color(model.selected_in_bands[0])),
+                (index_to_color(model.selected_in_bands[1])),
+                (index_to_color(model.selected_in_bands[2])),
+                (index_to_color(model.selected_in_bands[3])),
+                (index_to_color(model.selected_in_bands[4])),
+                (index_to_color(model.selected_in_bands[5])),
+            ]) {
+                Ok(r) => {
+                    let specs = r.specs();
+                    let s0 = format!("{}Ω", specs.ohm);
+                    let s1 = format!("±{}%", (specs.tolerance * 100.0));
+                    let s2 = format!("{}Ω", specs.min_ohm);
+                    let s3 = format!("{}Ω", specs.max_ohm);
+                    let s4 = format!(
+                        "{}(ppm/K)",
+                        specs.tcr.map(|f| f.to_string()).unwrap_or_default()
+                    );
+                    (s0, s1, s2, s3, s4)
+                }
+                Err(e) => (
+                    e.to_string(),
+                    e.to_string(),
+                    e.to_string(),
+                    e.to_string(),
+                    e.to_string(),
+                ),
+            };
+
+            let resistance_paragraph = Paragraph::new(resistor.0)
+                .style(Style::default().fg(Color::Yellow))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Resistance(Ω) "),
                 );
-                (s0, s1, s2, s3, s4)
+            frame.render_widget(resistance_paragraph, spec_chuncks[0]);
+
+            let tolerance_paragraph = Paragraph::new(resistor.1)
+                .style(Style::default().fg(Color::Yellow))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Tolerance(Ω) "),
+                );
+            frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
+
+            let min_paragraph = Paragraph::new(resistor.2)
+                .style(Style::default().fg(Color::Yellow))
+                .block(Block::default().borders(Borders::ALL).title(" Minimum(Ω) "));
+            frame.render_widget(min_paragraph, spec_chuncks[2]);
+
+            let max_paragraph = Paragraph::new(resistor.3)
+                .style(Style::default().fg(Color::Yellow))
+                .block(Block::default().borders(Borders::ALL).title(" Maximum(Ω) "));
+            frame.render_widget(max_paragraph, spec_chuncks[3]);
+
+            let tcr_paragraph = Paragraph::new(resistor.4)
+                .style(Style::default().fg(Color::Yellow))
+                .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
+            frame.render_widget(tcr_paragraph, spec_chuncks[4]);
+
+            for i in 0..model.selected_in_bands.len() {
+                let mut state =
+                    ListState::default().with_selected(Some(model.selected_in_bands[i]));
+                let is_focused = model.selected_band == i;
+                let list = band_list(i + 1, is_focused);
+                frame.render_stateful_widget(list, bands_rect[i], &mut state);
             }
-            Err(e) => (
-                e.to_string(),
-                e.to_string(),
-                e.to_string(),
-                e.to_string(),
-                e.to_string(),
-            ),
-        };
-
-        let resistance_paragraph = Paragraph::new(resistor.0)
-            .style(Style::default().fg(Color::Yellow))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Resistance(Ω) "),
-            );
-        frame.render_widget(resistance_paragraph, spec_chuncks[0]);
-
-        let tolerance_paragraph = Paragraph::new(resistor.1)
-            .style(Style::default().fg(Color::Yellow))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Tolerance(Ω) "),
-            );
-        frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
-
-        let min_paragraph = Paragraph::new(resistor.2)
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::ALL).title(" Minimum(Ω) "));
-        frame.render_widget(min_paragraph, spec_chuncks[2]);
-
-        let max_paragraph = Paragraph::new(resistor.3)
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::ALL).title(" Maximum(Ω) "));
-        frame.render_widget(max_paragraph, spec_chuncks[3]);
-
-        let tcr_paragraph = Paragraph::new(resistor.4)
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
-        frame.render_widget(tcr_paragraph, spec_chuncks[4]);
-
-        for i in 0..model.selected_in_bands.len() {
-            let mut state = ListState::default().with_selected(Some(model.selected_in_bands[i]));
-            let is_focused = model.selected_band == i;
-            let list = band_list(i + 1, is_focused);
-            frame.render_stateful_widget(list, bands_rect[i], &mut state);
         }
-    } else {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(2)
-            .constraints(
-                [
-                    Constraint::Length(2),
-                    Constraint::Length(1),
-                    Constraint::Length(3),
-                    Constraint::Min(1),
-                ]
-                .as_ref(),
-            )
-            .split(frame.area());
-        let input_rects = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Ratio(1, 3),
-                Constraint::Ratio(1, 3),
-                Constraint::Ratio(1, 3),
-            ])
-            .split(chunks[2]);
+        SelectedTab::SpecsToColorCodes => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints(
+                    [
+                        Constraint::Length(2),
+                        Constraint::Length(1),
+                        Constraint::Length(3),
+                        Constraint::Min(1),
+                    ]
+                    .as_ref(),
+                )
+                .split(frame.area());
+            let input_rects = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                ])
+                .split(chunks[2]);
 
-        let main_rects = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Percentage(10),
-                Constraint::Percentage(80),
-                Constraint::Percentage(10),
-            ])
-            .split(chunks[3]);
+            let main_rects = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Percentage(10),
+                    Constraint::Percentage(80),
+                    Constraint::Percentage(10),
+                ])
+                .split(chunks[3]);
 
-        let tabs_rect = chunks[0];
-        let help_msg_rect = chunks[1];
-        let resistance_rect = input_rects[0];
-        let tolerance_rect = input_rects[1];
-        let tcr_rect = input_rects[2];
-        let main_rect = main_rects[1];
+            let tabs_rect = chunks[0];
+            let help_msg_rect = chunks[1];
+            let resistance_rect = input_rects[0];
+            let tolerance_rect = input_rects[1];
+            let tcr_rect = input_rects[2];
+            let main_rect = main_rects[1];
 
-        let tabs = tabs(model.selected_tab_index);
-        frame.render_widget(tabs, tabs_rect);
+            let tabs = tabs(&model.selected_tab);
+            frame.render_widget(tabs, tabs_rect);
 
-        let (msg, style) = (
-            vec![
-                Span::raw("Press "),
-                Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to exit, "),
-                Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to move to the next input, "),
-                Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-                Span::raw(" to determine the resistor."),
-            ],
-            Style::default(),
-        );
-        let text = Text::from(Line::from(msg)).style(style);
-        let help_message = Paragraph::new(text);
-        frame.render_widget(help_message, help_msg_rect);
-
-        let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-        let resistance_scroll = model
-            .resistance_input
-            .visual_scroll(resistance_width as usize);
-        let resistance_paragraph = Paragraph::new(model.resistance_input.value())
-            .style(Style::default().fg(Color::Yellow))
-            .scroll((0, resistance_scroll as u16))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Resistance (Ohm) "),
+            let (msg, style) = (
+                vec![
+                    Span::raw("Press "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to exit, "),
+                    Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to move to the next input, "),
+                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(" to determine the resistor."),
+                ],
+                Style::default(),
             );
-        frame.render_widget(resistance_paragraph, resistance_rect);
+            let text = Text::from(Line::from(msg)).style(style);
+            let help_message = Paragraph::new(text);
+            frame.render_widget(help_message, help_msg_rect);
 
-        let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-        let tolerance_scroll = model
-            .tolerance_input
-            .visual_scroll(tolerance_width as usize);
-        let tolerance_paragraph = Paragraph::new(model.tolerance_input.value())
-            .style(Style::default().fg(Color::Yellow))
-            .scroll((0, tolerance_scroll as u16))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Tolerance (%) "),
-            );
-        frame.render_widget(tolerance_paragraph, tolerance_rect);
+            let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+            let resistance_scroll = model
+                .resistance_input
+                .visual_scroll(resistance_width as usize);
+            let resistance_paragraph = Paragraph::new(model.resistance_input.value())
+                .style(Style::default().fg(Color::Yellow))
+                .scroll((0, resistance_scroll as u16))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Resistance (Ohm) "),
+                );
+            frame.render_widget(resistance_paragraph, resistance_rect);
 
-        let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-        let tcr_scroll = model.tcr_input.visual_scroll(tcr_width as usize);
-        let tcr_paragraph = Paragraph::new(model.tcr_input.value())
-            .style(Style::default().fg(Color::Yellow))
-            .scroll((0, tcr_scroll as u16))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" TCR (ppm/K) "),
-            );
-        frame.render_widget(tcr_paragraph, tcr_rect);
+            let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+            let tolerance_scroll = model
+                .tolerance_input
+                .visual_scroll(tolerance_width as usize);
+            let tolerance_paragraph = Paragraph::new(model.tolerance_input.value())
+                .style(Style::default().fg(Color::Yellow))
+                .scroll((0, tolerance_scroll as u16))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Tolerance (%) "),
+                );
+            frame.render_widget(tolerance_paragraph, tolerance_rect);
 
-        // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-        let (rect, input, scroll) = match model.focus {
-            InputFocus::Resistance => (resistance_rect, &model.resistance_input, resistance_scroll),
-            InputFocus::Tolerance => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
-            InputFocus::Tcr => (tcr_rect, &model.tcr_input, tcr_scroll),
-        };
-        frame.set_cursor_position((
-            // Put cursor past the end of the input text
-            rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
-            // Move one line down, from the border to the input line
-            rect.y + 1,
-        ));
+            let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+            let tcr_scroll = model.tcr_input.visual_scroll(tcr_width as usize);
+            let tcr_paragraph = Paragraph::new(model.tcr_input.value())
+                .style(Style::default().fg(Color::Yellow))
+                .scroll((0, tcr_scroll as u16))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" TCR (ppm/K) "),
+                );
+            frame.render_widget(tcr_paragraph, tcr_rect);
 
-        if let Some(resistor) = &model.resistor {
-            let colors = resistor
-                .bands()
-                .iter()
-                .map(|c| rusistor_color_to_ratatui_color(c))
-                .collect::<Vec<(Color, String)>>();
-            let specs = resistor.specs();
-            let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
-            frame.render_widget(chart, main_rect);
-        }
-        if let Some(e) = &model.error {
-            let text = Text::from(e.to_string());
-            let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
-            frame.render_widget(error_message, main_rect);
+            // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+            let (rect, input, scroll) = match model.focus {
+                InputFocus::Resistance => {
+                    (resistance_rect, &model.resistance_input, resistance_scroll)
+                }
+                InputFocus::Tolerance => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
+                InputFocus::Tcr => (tcr_rect, &model.tcr_input, tcr_scroll),
+            };
+            frame.set_cursor_position((
+                // Put cursor past the end of the input text
+                rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
+                // Move one line down, from the border to the input line
+                rect.y + 1,
+            ));
+
+            if let Some(resistor) = &model.resistor {
+                let colors = resistor
+                    .bands()
+                    .iter()
+                    .map(|c| rusistor_color_to_ratatui_color(c))
+                    .collect::<Vec<(Color, String)>>();
+                let specs = resistor.specs();
+                let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
+                frame.render_widget(chart, main_rect);
+            }
+            if let Some(e) = &model.error {
+                let text = Text::from(e.to_string());
+                let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
+                frame.render_widget(error_message, main_rect);
+            }
         }
     }
 }
@@ -378,16 +409,16 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 }
 
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
-    match key.code {
-        KeyCode::Right | KeyCode::Left => Some(Msg::ToggleTab),
-        KeyCode::Enter => Some(Msg::Determine),
-        KeyCode::Tab if model.selected_tab_index == 0 => Some(Msg::NextSpecInput),
-        KeyCode::Tab if model.selected_tab_index == 1 => Some(Msg::NextBand),
-        KeyCode::BackTab if model.selected_tab_index == 0 => Some(Msg::PrevSpecInput),
-        KeyCode::BackTab if model.selected_tab_index == 1 => Some(Msg::PrevBand),
-        KeyCode::Up if model.selected_tab_index == 1 => Some(Msg::PrevColor),
-        KeyCode::Down if model.selected_tab_index == 1 => Some(Msg::NextColor),
-        KeyCode::Esc => Some(Msg::Exit),
+    match (key.code, &model.selected_tab) {
+        (KeyCode::Right, _) | (KeyCode::Left, _) => Some(Msg::ToggleTab),
+        (KeyCode::Enter, SelectedTab::SpecsToColorCodes) => Some(Msg::Determine),
+        (KeyCode::Tab, SelectedTab::SpecsToColorCodes) => Some(Msg::NextSpecInput),
+        (KeyCode::Tab, SelectedTab::ColorCodesToSpecs) => Some(Msg::NextBand),
+        (KeyCode::BackTab, SelectedTab::SpecsToColorCodes) => Some(Msg::PrevSpecInput),
+        (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::PrevBand),
+        (KeyCode::Up, SelectedTab::ColorCodesToSpecs) => Some(Msg::PrevColor),
+        (KeyCode::Down, SelectedTab::ColorCodesToSpecs) => Some(Msg::NextColor),
+        (KeyCode::Esc, _) => Some(Msg::Exit),
         _ => {
             let target_input = match model.focus {
                 InputFocus::Resistance => &mut model.resistance_input,
@@ -402,7 +433,7 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
 
 pub fn update(model: &mut Model, msg: Msg) {
     match msg {
-        Msg::ToggleTab => model.selected_tab_index = (model.selected_tab_index + 1) % 2,
+        Msg::ToggleTab => model.selected_tab = model.selected_tab.toggle(),
         Msg::Determine => {
             match try_determine_resistor(
                 model.resistance_input.value(),

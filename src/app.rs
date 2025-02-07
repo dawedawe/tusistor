@@ -72,7 +72,7 @@ impl Default for Model {
 }
 
 fn tabs<'a>(selected: usize) -> Tabs<'a> {
-    Tabs::new(vec!["specs to color codes", "color codes to specs"])
+    Tabs::new(vec!["color codes to specs", "specs to color codes"])
         .padding(" ", " ")
         .select(selected)
 }
@@ -118,6 +118,117 @@ fn band_list<'a>(number: usize, is_focused: bool) -> List<'a> {
 
 pub fn view(model: &Model, frame: &mut Frame) {
     if model.selected_tab_index == 0 {
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(2)
+            .constraints(
+                [
+                    Constraint::Length(2),
+                    Constraint::Max(3),
+                    Constraint::Max(15),
+                    Constraint::Min(1),
+                ]
+                .as_ref(),
+            )
+            .split(frame.area());
+        let tabs_rect = chunks[0];
+
+        let spec_chuncks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+            ])
+            .split(chunks[1]);
+
+        let bands_rect = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+                Constraint::Ratio(1, 6),
+            ])
+            .split(chunks[2]);
+
+        let tabs = tabs(model.selected_tab_index);
+        frame.render_widget(tabs, tabs_rect);
+
+        let resistor = match rusistor::Resistor::try_create(vec![
+            (index_to_color(model.selected_in_bands[0])),
+            (index_to_color(model.selected_in_bands[1])),
+            (index_to_color(model.selected_in_bands[2])),
+            (index_to_color(model.selected_in_bands[3])),
+            (index_to_color(model.selected_in_bands[4])),
+            (index_to_color(model.selected_in_bands[5])),
+        ]) {
+            Ok(r) => {
+                let specs = r.specs();
+                let s0 = format!("{}Ω", specs.ohm);
+                let s1 = format!("±{}%", (specs.tolerance * 100.0));
+                let s2 = format!("{}Ω", specs.min_ohm);
+                let s3 = format!("{}Ω", specs.max_ohm);
+                let s4 = format!(
+                    "{}(ppm/K)",
+                    specs.tcr.map(|f| f.to_string()).unwrap_or_default()
+                );
+                (s0, s1, s2, s3, s4)
+            }
+            Err(e) => (
+                e.to_string(),
+                e.to_string(),
+                e.to_string(),
+                e.to_string(),
+                e.to_string(),
+            ),
+        };
+
+        let resistance_paragraph = Paragraph::new(resistor.0)
+            .style(Style::default().fg(Color::Yellow))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Resistance(Ω) "),
+            );
+        frame.render_widget(resistance_paragraph, spec_chuncks[0]);
+
+        let tolerance_paragraph = Paragraph::new(resistor.1)
+            .style(Style::default().fg(Color::Yellow))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title(" Tolerance(Ω) "),
+            );
+        frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
+
+        let min_paragraph = Paragraph::new(resistor.2)
+            .style(Style::default().fg(Color::Yellow))
+            .block(Block::default().borders(Borders::ALL).title(" Minimum(Ω) "));
+        frame.render_widget(min_paragraph, spec_chuncks[2]);
+
+        let max_paragraph = Paragraph::new(resistor.3)
+            .style(Style::default().fg(Color::Yellow))
+            .block(Block::default().borders(Borders::ALL).title(" Maximum(Ω) "));
+        frame.render_widget(max_paragraph, spec_chuncks[3]);
+
+        let tcr_paragraph = Paragraph::new(resistor.4)
+            .style(Style::default().fg(Color::Yellow))
+            .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
+        frame.render_widget(tcr_paragraph, spec_chuncks[4]);
+
+        for i in 0..model.selected_in_bands.len() {
+            let mut state = ListState::default().with_selected(Some(model.selected_in_bands[i]));
+            let is_focused = model.selected_band == i;
+            let list = band_list(i + 1, is_focused);
+            frame.render_stateful_widget(list, bands_rect[i], &mut state);
+        }
+    } else {
         let chunks = Layout::default()
             .direction(Direction::Vertical)
             .margin(2)
@@ -242,117 +353,6 @@ pub fn view(model: &Model, frame: &mut Frame) {
             let text = Text::from(e.to_string());
             let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
             frame.render_widget(error_message, main_rect);
-        }
-    } else {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .margin(2)
-            .constraints(
-                [
-                    Constraint::Length(2),
-                    Constraint::Max(3),
-                    Constraint::Max(15),
-                    Constraint::Min(1),
-                ]
-                .as_ref(),
-            )
-            .split(frame.area());
-        let tabs_rect = chunks[0];
-
-        let spec_chuncks = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-            ])
-            .split(chunks[1]);
-
-        let bands_rect = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints([
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-                Constraint::Ratio(1, 6),
-            ])
-            .split(chunks[2]);
-
-        let tabs = tabs(model.selected_tab_index);
-        frame.render_widget(tabs, tabs_rect);
-
-        let resistor = match rusistor::Resistor::try_create(vec![
-            (index_to_color(model.selected_in_bands[0])),
-            (index_to_color(model.selected_in_bands[1])),
-            (index_to_color(model.selected_in_bands[2])),
-            (index_to_color(model.selected_in_bands[3])),
-            (index_to_color(model.selected_in_bands[4])),
-            (index_to_color(model.selected_in_bands[5])),
-        ]) {
-            Ok(r) => {
-                let specs = r.specs();
-                let s0 = format!("{}Ω", specs.ohm);
-                let s1 = format!("±{}%", (specs.tolerance * 100.0));
-                let s2 = format!("{}Ω", specs.min_ohm);
-                let s3 = format!("{}Ω", specs.max_ohm);
-                let s4 = format!(
-                    "{}(ppm/K)",
-                    specs.tcr.map(|f| f.to_string()).unwrap_or_default()
-                );
-                (s0, s1, s2, s3, s4)
-            }
-            Err(e) => (
-                e.to_string(),
-                e.to_string(),
-                e.to_string(),
-                e.to_string(),
-                e.to_string(),
-            ),
-        };
-
-        let resistance_paragraph = Paragraph::new(resistor.0)
-            .style(Style::default().fg(Color::Yellow))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Resistance(Ω) "),
-            );
-        frame.render_widget(resistance_paragraph, spec_chuncks[0]);
-
-        let tolerance_paragraph = Paragraph::new(resistor.1)
-            .style(Style::default().fg(Color::Yellow))
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(" Tolerance(Ω) "),
-            );
-        frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
-
-        let min_paragraph = Paragraph::new(resistor.2)
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::ALL).title(" Minimum(Ω) "));
-        frame.render_widget(min_paragraph, spec_chuncks[2]);
-
-        let max_paragraph = Paragraph::new(resistor.3)
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::ALL).title(" Maximum(Ω) "));
-        frame.render_widget(max_paragraph, spec_chuncks[3]);
-
-        let tcr_paragraph = Paragraph::new(resistor.4)
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
-        frame.render_widget(tcr_paragraph, spec_chuncks[4]);
-
-        for i in 0..model.selected_in_bands.len() {
-            let mut state = ListState::default().with_selected(Some(model.selected_in_bands[i]));
-            let is_focused = model.selected_band == i;
-            let list = band_list(i + 1, is_focused);
-            frame.render_stateful_widget(list, bands_rect[i], &mut state);
         }
     }
 }

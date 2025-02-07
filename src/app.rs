@@ -394,12 +394,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
     }
 }
 
-// ToDo devide per tab
-pub enum Msg {
-    ToggleTab,
-    Determine,
-    NextSpecInput,
-    PrevSpecInput,
+pub enum ColorCodesMsg {
     ThreeBands,
     FourBands,
     FiveBands,
@@ -408,7 +403,19 @@ pub enum Msg {
     PrevBand,
     NextColor,
     PrevColor,
+}
+
+pub enum SpecsMsg {
+    Determine,
+    NextSpecInput,
+    PrevSpecInput,
+}
+
+pub enum Msg {
+    ToggleTab,
     Exit,
+    SpecsMsg { msg: SpecsMsg },
+    ColorCodesMsg { msg: ColorCodesMsg },
 }
 
 pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
@@ -422,17 +429,39 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
     match (key.code, &model.selected_tab) {
         (KeyCode::Right, _) | (KeyCode::Left, _) => Some(Msg::ToggleTab),
-        (KeyCode::Enter, SelectedTab::SpecsToColorCodes) => Some(Msg::Determine),
-        (KeyCode::Tab, SelectedTab::SpecsToColorCodes) => Some(Msg::NextSpecInput),
-        (KeyCode::Tab, SelectedTab::ColorCodesToSpecs) => Some(Msg::NextBand),
-        (KeyCode::BackTab, SelectedTab::SpecsToColorCodes) => Some(Msg::PrevSpecInput),
-        (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::PrevBand),
-        (KeyCode::Up, SelectedTab::ColorCodesToSpecs) => Some(Msg::PrevColor),
-        (KeyCode::Down, SelectedTab::ColorCodesToSpecs) => Some(Msg::NextColor),
-        (KeyCode::Char('3'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ThreeBands),
-        (KeyCode::Char('4'), SelectedTab::ColorCodesToSpecs) => Some(Msg::FourBands),
-        (KeyCode::Char('5'), SelectedTab::ColorCodesToSpecs) => Some(Msg::FiveBands),
-        (KeyCode::Char('6'), SelectedTab::ColorCodesToSpecs) => Some(Msg::SixBands),
+        (KeyCode::Enter, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::Determine,
+        }),
+        (KeyCode::Tab, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::NextSpecInput,
+        }),
+        (KeyCode::Tab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextBand,
+        }),
+        (KeyCode::BackTab, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::PrevSpecInput,
+        }),
+        (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevBand,
+        }),
+        (KeyCode::Up, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevColor,
+        }),
+        (KeyCode::Down, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextColor,
+        }),
+        (KeyCode::Char('3'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::ThreeBands,
+        }),
+        (KeyCode::Char('4'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FourBands,
+        }),
+        (KeyCode::Char('5'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FiveBands,
+        }),
+        (KeyCode::Char('6'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::SixBands,
+        }),
         (KeyCode::Esc, _) => Some(Msg::Exit),
         _ => {
             let target_input = match model.specs_to_color.focus {
@@ -449,7 +478,9 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
 pub fn update(model: &mut Model, msg: Msg) {
     match msg {
         Msg::ToggleTab => model.selected_tab = model.selected_tab.toggle(),
-        Msg::Determine => {
+        Msg::SpecsMsg {
+            msg: SpecsMsg::Determine,
+        } => {
             match try_determine_resistor(
                 model.specs_to_color.resistance_input.value(),
                 model.specs_to_color.tolerance_input.value(),
@@ -469,7 +500,12 @@ pub fn update(model: &mut Model, msg: Msg) {
             model.specs_to_color.tcr_input.reset();
             model.specs_to_color.focus = InputFocus::Resistance;
         }
-        Msg::NextSpecInput | Msg::PrevSpecInput => {
+        Msg::SpecsMsg {
+            msg: SpecsMsg::NextSpecInput,
+        }
+        | Msg::SpecsMsg {
+            msg: SpecsMsg::PrevSpecInput,
+        } => {
             model.specs_to_color.error = match model.specs_to_color.focus {
                 InputFocus::Resistance => {
                     let value = model.specs_to_color.resistance_input.value();
@@ -498,7 +534,9 @@ pub fn update(model: &mut Model, msg: Msg) {
             };
             if model.specs_to_color.error.is_none() {
                 model.specs_to_color.focus = match msg {
-                    Msg::NextSpecInput => model.specs_to_color.focus.next(),
+                    Msg::SpecsMsg {
+                        msg: SpecsMsg::NextSpecInput,
+                    } => model.specs_to_color.focus.next(),
                     _ => model.specs_to_color.focus.prev(),
                 };
             } else {
@@ -508,14 +546,18 @@ pub fn update(model: &mut Model, msg: Msg) {
         Msg::Exit => {
             model.running = false;
         }
-        Msg::ThreeBands => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::ThreeBands,
+        } => {
             model.color_codes_to_specs.resistor = Resistor::ThreeBand {
                 band1: rusistor::Color::Brown,
                 band2: rusistor::Color::Black,
                 band3: rusistor::Color::Black,
             }
         }
-        Msg::FourBands => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FourBands,
+        } => {
             model.color_codes_to_specs.resistor = Resistor::FourBand {
                 band1: rusistor::Color::Brown,
                 band2: rusistor::Color::Black,
@@ -523,7 +565,9 @@ pub fn update(model: &mut Model, msg: Msg) {
                 band4: rusistor::Color::Brown,
             }
         }
-        Msg::FiveBands => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FiveBands,
+        } => {
             model.color_codes_to_specs.resistor = Resistor::FiveBand {
                 band1: rusistor::Color::Brown,
                 band2: rusistor::Color::Black,
@@ -532,7 +576,9 @@ pub fn update(model: &mut Model, msg: Msg) {
                 band5: rusistor::Color::Brown,
             }
         }
-        Msg::SixBands => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::SixBands,
+        } => {
             model.color_codes_to_specs.resistor = Resistor::SixBand {
                 band1: rusistor::Color::Brown,
                 band2: rusistor::Color::Black,
@@ -542,17 +588,23 @@ pub fn update(model: &mut Model, msg: Msg) {
                 band6: rusistor::Color::Black,
             }
         }
-        Msg::NextBand => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextBand,
+        } => {
             model.color_codes_to_specs.selected_band = (model.color_codes_to_specs.selected_band
                 + 1)
                 % model.color_codes_to_specs.resistor.bands().len()
         }
-        Msg::PrevBand => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevBand,
+        } => {
             let bands_count = model.color_codes_to_specs.resistor.bands().len();
             model.color_codes_to_specs.selected_band =
                 (model.color_codes_to_specs.selected_band + (bands_count - 1)) % bands_count
         }
-        Msg::NextColor => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextColor,
+        } => {
             let mut bands: Vec<rusistor::Color> = model
                 .color_codes_to_specs
                 .resistor
@@ -572,7 +624,9 @@ pub fn update(model: &mut Model, msg: Msg) {
             }
             model.color_codes_to_specs.resistor = resistor.unwrap();
         }
-        Msg::PrevColor => {
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevColor,
+        } => {
             let mut bands: Vec<rusistor::Color> = model
                 .color_codes_to_specs
                 .resistor

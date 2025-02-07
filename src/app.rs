@@ -78,14 +78,21 @@ pub struct SpecsToColorModel {
 #[derive(Debug)]
 pub struct ColorCodesToSpecsModel {
     pub selected_band: usize,
-    pub selected_in_bands: [usize; 6],
+    pub resistor: Resistor,
 }
 
 impl Default for ColorCodesToSpecsModel {
     fn default() -> ColorCodesToSpecsModel {
         ColorCodesToSpecsModel {
             selected_band: 0,
-            selected_in_bands: [1, 0, 0, 0, 1, 0],
+            resistor: Resistor::SixBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+                band6: rusistor::Color::Black,
+            },
         }
     }
 }
@@ -199,36 +206,9 @@ pub fn view(model: &Model, frame: &mut Frame) {
             let tabs = tabs(&model.selected_tab);
             frame.render_widget(tabs, tabs_rect);
 
-            let resistor = match rusistor::Resistor::try_create(vec![
-                (index_to_color(model.color_codes_to_specs.selected_in_bands[0])),
-                (index_to_color(model.color_codes_to_specs.selected_in_bands[1])),
-                (index_to_color(model.color_codes_to_specs.selected_in_bands[2])),
-                (index_to_color(model.color_codes_to_specs.selected_in_bands[3])),
-                (index_to_color(model.color_codes_to_specs.selected_in_bands[4])),
-                (index_to_color(model.color_codes_to_specs.selected_in_bands[5])),
-            ]) {
-                Ok(r) => {
-                    let specs = r.specs();
-                    let s0 = format!("{}Ω", specs.ohm);
-                    let s1 = format!("±{}%", (specs.tolerance * 100.0));
-                    let s2 = format!("{}Ω", specs.min_ohm);
-                    let s3 = format!("{}Ω", specs.max_ohm);
-                    let s4 = format!(
-                        "{}(ppm/K)",
-                        specs.tcr.map(|f| f.to_string()).unwrap_or_default()
-                    );
-                    (s0, s1, s2, s3, s4)
-                }
-                Err(e) => (
-                    e.to_string(),
-                    e.to_string(),
-                    e.to_string(),
-                    e.to_string(),
-                    e.to_string(),
-                ),
-            };
+            let specs = model.color_codes_to_specs.resistor.specs();
 
-            let resistance_paragraph = Paragraph::new(resistor.0)
+            let resistance_paragraph = Paragraph::new(format!("{}Ω", specs.ohm))
                 .style(Style::default().fg(Color::Yellow))
                 .block(
                     Block::default()
@@ -237,7 +217,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 );
             frame.render_widget(resistance_paragraph, spec_chuncks[0]);
 
-            let tolerance_paragraph = Paragraph::new(resistor.1)
+            let tolerance_paragraph = Paragraph::new(format!("±{}%", (specs.tolerance * 100.0)))
                 .style(Style::default().fg(Color::Yellow))
                 .block(
                     Block::default()
@@ -246,24 +226,27 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 );
             frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
 
-            let min_paragraph = Paragraph::new(resistor.2)
+            let min_paragraph = Paragraph::new(format!("{}Ω", specs.min_ohm))
                 .style(Style::default().fg(Color::Yellow))
                 .block(Block::default().borders(Borders::ALL).title(" Minimum(Ω) "));
             frame.render_widget(min_paragraph, spec_chuncks[2]);
 
-            let max_paragraph = Paragraph::new(resistor.3)
+            let max_paragraph = Paragraph::new(format!("{}Ω", specs.max_ohm))
                 .style(Style::default().fg(Color::Yellow))
                 .block(Block::default().borders(Borders::ALL).title(" Maximum(Ω) "));
             frame.render_widget(max_paragraph, spec_chuncks[3]);
 
-            let tcr_paragraph = Paragraph::new(resistor.4)
-                .style(Style::default().fg(Color::Yellow))
-                .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
+            let tcr_paragraph = Paragraph::new(format!(
+                "{}(ppm/K)",
+                specs.tcr.map(|f| f.to_string()).unwrap_or_default()
+            ))
+            .style(Style::default().fg(Color::Yellow))
+            .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
             frame.render_widget(tcr_paragraph, spec_chuncks[4]);
 
-            for i in 0..model.color_codes_to_specs.selected_in_bands.len() {
-                let mut state = ListState::default()
-                    .with_selected(Some(model.color_codes_to_specs.selected_in_bands[i]));
+            let bands = model.color_codes_to_specs.resistor.bands();
+            for i in 0..bands.len() {
+                let mut state = ListState::default().with_selected(Some(color_to_index(bands[i])));
                 let is_focused = model.color_codes_to_specs.selected_band == i;
                 let list = band_list(i + 1, is_focused);
                 frame.render_stateful_widget(list, bands_rect[i], &mut state);
@@ -519,28 +502,54 @@ pub fn update(model: &mut Model, msg: Msg) {
             model.running = false;
         }
         Msg::NextBand => {
-            model.color_codes_to_specs.selected_band =
-                (model.color_codes_to_specs.selected_band + 1) % 6
+            model.color_codes_to_specs.selected_band = (model.color_codes_to_specs.selected_band
+                + 1)
+                % model.color_codes_to_specs.resistor.bands().len()
         }
         Msg::PrevBand => {
+            let bands_count = model.color_codes_to_specs.resistor.bands().len();
             model.color_codes_to_specs.selected_band =
-                (model.color_codes_to_specs.selected_band + 5) % 6
+                (model.color_codes_to_specs.selected_band + (bands_count - 1)) % bands_count
         }
         Msg::NextColor => {
-            model.color_codes_to_specs.selected_in_bands
-                [model.color_codes_to_specs.selected_band] = (model
+            let mut bands: Vec<rusistor::Color> = model
                 .color_codes_to_specs
-                .selected_in_bands[model.color_codes_to_specs.selected_band]
-                + 1)
-                % 13;
+                .resistor
+                .bands()
+                .into_iter()
+                .cloned()
+                .collect();
+            let current_idx = color_to_index(&bands[model.color_codes_to_specs.selected_band]);
+
+            let mut i: usize = 0;
+            let mut resistor = Err("".to_string());
+            while resistor.is_err() {
+                i += 1;
+                let next_color = index_to_color((current_idx + i) % 13);
+                bands[model.color_codes_to_specs.selected_band] = next_color;
+                resistor = Resistor::try_create(bands.clone());
+            }
+            model.color_codes_to_specs.resistor = resistor.unwrap();
         }
         Msg::PrevColor => {
-            model.color_codes_to_specs.selected_in_bands
-                [model.color_codes_to_specs.selected_band] = (model
+            let mut bands: Vec<rusistor::Color> = model
                 .color_codes_to_specs
-                .selected_in_bands[model.color_codes_to_specs.selected_band]
-                + 12)
-                % 13;
+                .resistor
+                .bands()
+                .into_iter()
+                .cloned()
+                .collect();
+            let current_idx = color_to_index(&bands[model.color_codes_to_specs.selected_band]);
+
+            let mut i: usize = 13;
+            let mut resistor = Err("".to_string());
+            while resistor.is_err() {
+                i -= 1;
+                let next_color = index_to_color((current_idx + i) % 13);
+                bands[model.color_codes_to_specs.selected_band] = next_color;
+                resistor = Resistor::try_create(bands.clone());
+            }
+            model.color_codes_to_specs.resistor = resistor.unwrap();
         }
     }
 }
@@ -674,5 +683,23 @@ fn index_to_color(idx: usize) -> rusistor::Color {
         11 => rusistor::Color::Silver,
         12 => rusistor::Color::Pink,
         _ => panic!("unknown color"),
+    }
+}
+
+fn color_to_index(color: &rusistor::Color) -> usize {
+    match color {
+        rusistor::Color::Black => 0,
+        rusistor::Color::Brown => 1,
+        rusistor::Color::Red => 2,
+        rusistor::Color::Orange => 3,
+        rusistor::Color::Yellow => 4,
+        rusistor::Color::Green => 5,
+        rusistor::Color::Blue => 6,
+        rusistor::Color::Violet => 7,
+        rusistor::Color::Grey => 8,
+        rusistor::Color::White => 9,
+        rusistor::Color::Gold => 10,
+        rusistor::Color::Silver => 11,
+        rusistor::Color::Pink => 12,
     }
 }

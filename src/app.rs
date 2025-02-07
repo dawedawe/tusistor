@@ -208,7 +208,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
             let specs = model.color_codes_to_specs.resistor.specs();
 
-            let resistance_paragraph = Paragraph::new(format!("{}Ω", specs.ohm))
+            let resistance_paragraph = Paragraph::new(specs.ohm.to_string())
                 .style(Style::default().fg(Color::Yellow))
                 .block(
                     Block::default()
@@ -217,31 +217,29 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 );
             frame.render_widget(resistance_paragraph, spec_chuncks[0]);
 
-            let tolerance_paragraph = Paragraph::new(format!("±{}%", (specs.tolerance * 100.0)))
+            let tolerance_paragraph = Paragraph::new(format!("±{}", (specs.tolerance * 100.0)))
                 .style(Style::default().fg(Color::Yellow))
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title(" Tolerance(Ω) "),
+                        .title(" Tolerance(%) "),
                 );
             frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
 
-            let min_paragraph = Paragraph::new(format!("{}Ω", specs.min_ohm))
+            let min_paragraph = Paragraph::new(specs.min_ohm.to_string())
                 .style(Style::default().fg(Color::Yellow))
                 .block(Block::default().borders(Borders::ALL).title(" Minimum(Ω) "));
             frame.render_widget(min_paragraph, spec_chuncks[2]);
 
-            let max_paragraph = Paragraph::new(format!("{}Ω", specs.max_ohm))
+            let max_paragraph = Paragraph::new(specs.max_ohm.to_string())
                 .style(Style::default().fg(Color::Yellow))
                 .block(Block::default().borders(Borders::ALL).title(" Maximum(Ω) "));
             frame.render_widget(max_paragraph, spec_chuncks[3]);
 
-            let tcr_paragraph = Paragraph::new(format!(
-                "{}(ppm/K)",
-                specs.tcr.map(|f| f.to_string()).unwrap_or_default()
-            ))
-            .style(Style::default().fg(Color::Yellow))
-            .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
+            let tcr_paragraph =
+                Paragraph::new(specs.tcr.map(|f| f.to_string()).unwrap_or_default())
+                    .style(Style::default().fg(Color::Yellow))
+                    .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
             frame.render_widget(tcr_paragraph, spec_chuncks[4]);
 
             let bands = model.color_codes_to_specs.resistor.bands();
@@ -322,7 +320,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
-                            .title(" Resistance (Ohm) "),
+                            .title(" Resistance (Ω) "),
                     );
             frame.render_widget(resistance_paragraph, resistance_rect);
 

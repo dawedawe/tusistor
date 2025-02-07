@@ -396,11 +396,16 @@ pub fn view(model: &Model, frame: &mut Frame) {
     }
 }
 
+// ToDo devide per tab
 pub enum Msg {
     ToggleTab,
     Determine,
     NextSpecInput,
     PrevSpecInput,
+    ThreeBands,
+    FourBands,
+    FiveBands,
+    SixBands,
     NextBand,
     PrevBand,
     NextColor,
@@ -426,6 +431,10 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
         (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::PrevBand),
         (KeyCode::Up, SelectedTab::ColorCodesToSpecs) => Some(Msg::PrevColor),
         (KeyCode::Down, SelectedTab::ColorCodesToSpecs) => Some(Msg::NextColor),
+        (KeyCode::Char('3'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ThreeBands),
+        (KeyCode::Char('4'), SelectedTab::ColorCodesToSpecs) => Some(Msg::FourBands),
+        (KeyCode::Char('5'), SelectedTab::ColorCodesToSpecs) => Some(Msg::FiveBands),
+        (KeyCode::Char('6'), SelectedTab::ColorCodesToSpecs) => Some(Msg::SixBands),
         (KeyCode::Esc, _) => Some(Msg::Exit),
         _ => {
             let target_input = match model.specs_to_color.focus {
@@ -500,6 +509,40 @@ pub fn update(model: &mut Model, msg: Msg) {
         }
         Msg::Exit => {
             model.running = false;
+        }
+        Msg::ThreeBands => {
+            model.color_codes_to_specs.resistor = Resistor::ThreeBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+            }
+        }
+        Msg::FourBands => {
+            model.color_codes_to_specs.resistor = Resistor::FourBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Brown,
+            }
+        }
+        Msg::FiveBands => {
+            model.color_codes_to_specs.resistor = Resistor::FiveBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+            }
+        }
+        Msg::SixBands => {
+            model.color_codes_to_specs.resistor = Resistor::SixBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+                band6: rusistor::Color::Black,
+            }
         }
         Msg::NextBand => {
             model.color_codes_to_specs.selected_band = (model.color_codes_to_specs.selected_band

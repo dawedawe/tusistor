@@ -65,18 +65,37 @@ impl From<&SelectedTab> for Option<usize> {
     }
 }
 
-#[derive(Debug)]
-pub struct Model {
-    pub running: bool,
-    pub selected_tab: SelectedTab,
+#[derive(Debug, Default)]
+pub struct SpecsToColorModel {
     pub resistance_input: Input,
     pub tolerance_input: Input,
     pub tcr_input: Input,
     pub focus: InputFocus,
     pub resistor: Option<Resistor>,
     pub error: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct ColorCodesToSpecsModel {
     pub selected_band: usize,
     pub selected_in_bands: [usize; 6],
+}
+
+impl Default for ColorCodesToSpecsModel {
+    fn default() -> ColorCodesToSpecsModel {
+        ColorCodesToSpecsModel {
+            selected_band: 0,
+            selected_in_bands: [1, 0, 0, 0, 1, 0],
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Model {
+    pub running: bool,
+    pub selected_tab: SelectedTab,
+    pub specs_to_color: SpecsToColorModel,
+    pub color_codes_to_specs: ColorCodesToSpecsModel,
 }
 
 impl Default for Model {
@@ -84,14 +103,8 @@ impl Default for Model {
         Model {
             running: true,
             selected_tab: SelectedTab::default(),
-            resistance_input: Input::default(),
-            tolerance_input: Input::default(),
-            tcr_input: Input::default(),
-            focus: InputFocus::default(),
-            resistor: None,
-            error: None,
-            selected_band: 0,
-            selected_in_bands: [1, 0, 0, 0, 1, 0],
+            specs_to_color: SpecsToColorModel::default(),
+            color_codes_to_specs: ColorCodesToSpecsModel::default(),
         }
     }
 }
@@ -187,12 +200,12 @@ pub fn view(model: &Model, frame: &mut Frame) {
             frame.render_widget(tabs, tabs_rect);
 
             let resistor = match rusistor::Resistor::try_create(vec![
-                (index_to_color(model.selected_in_bands[0])),
-                (index_to_color(model.selected_in_bands[1])),
-                (index_to_color(model.selected_in_bands[2])),
-                (index_to_color(model.selected_in_bands[3])),
-                (index_to_color(model.selected_in_bands[4])),
-                (index_to_color(model.selected_in_bands[5])),
+                (index_to_color(model.color_codes_to_specs.selected_in_bands[0])),
+                (index_to_color(model.color_codes_to_specs.selected_in_bands[1])),
+                (index_to_color(model.color_codes_to_specs.selected_in_bands[2])),
+                (index_to_color(model.color_codes_to_specs.selected_in_bands[3])),
+                (index_to_color(model.color_codes_to_specs.selected_in_bands[4])),
+                (index_to_color(model.color_codes_to_specs.selected_in_bands[5])),
             ]) {
                 Ok(r) => {
                     let specs = r.specs();
@@ -248,10 +261,10 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
             frame.render_widget(tcr_paragraph, spec_chuncks[4]);
 
-            for i in 0..model.selected_in_bands.len() {
-                let mut state =
-                    ListState::default().with_selected(Some(model.selected_in_bands[i]));
-                let is_focused = model.selected_band == i;
+            for i in 0..model.color_codes_to_specs.selected_in_bands.len() {
+                let mut state = ListState::default()
+                    .with_selected(Some(model.color_codes_to_specs.selected_in_bands[i]));
+                let is_focused = model.color_codes_to_specs.selected_band == i;
                 let list = band_list(i + 1, is_focused);
                 frame.render_stateful_widget(list, bands_rect[i], &mut state);
             }
@@ -316,23 +329,26 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
             let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
             let resistance_scroll = model
+                .specs_to_color
                 .resistance_input
                 .visual_scroll(resistance_width as usize);
-            let resistance_paragraph = Paragraph::new(model.resistance_input.value())
-                .style(Style::default().fg(Color::Yellow))
-                .scroll((0, resistance_scroll as u16))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" Resistance (Ohm) "),
-                );
+            let resistance_paragraph =
+                Paragraph::new(model.specs_to_color.resistance_input.value())
+                    .style(Style::default().fg(Color::Yellow))
+                    .scroll((0, resistance_scroll as u16))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(" Resistance (Ohm) "),
+                    );
             frame.render_widget(resistance_paragraph, resistance_rect);
 
             let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
             let tolerance_scroll = model
+                .specs_to_color
                 .tolerance_input
                 .visual_scroll(tolerance_width as usize);
-            let tolerance_paragraph = Paragraph::new(model.tolerance_input.value())
+            let tolerance_paragraph = Paragraph::new(model.specs_to_color.tolerance_input.value())
                 .style(Style::default().fg(Color::Yellow))
                 .scroll((0, tolerance_scroll as u16))
                 .block(
@@ -343,8 +359,11 @@ pub fn view(model: &Model, frame: &mut Frame) {
             frame.render_widget(tolerance_paragraph, tolerance_rect);
 
             let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-            let tcr_scroll = model.tcr_input.visual_scroll(tcr_width as usize);
-            let tcr_paragraph = Paragraph::new(model.tcr_input.value())
+            let tcr_scroll = model
+                .specs_to_color
+                .tcr_input
+                .visual_scroll(tcr_width as usize);
+            let tcr_paragraph = Paragraph::new(model.specs_to_color.tcr_input.value())
                 .style(Style::default().fg(Color::Yellow))
                 .scroll((0, tcr_scroll as u16))
                 .block(
@@ -355,12 +374,18 @@ pub fn view(model: &Model, frame: &mut Frame) {
             frame.render_widget(tcr_paragraph, tcr_rect);
 
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-            let (rect, input, scroll) = match model.focus {
-                InputFocus::Resistance => {
-                    (resistance_rect, &model.resistance_input, resistance_scroll)
-                }
-                InputFocus::Tolerance => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
-                InputFocus::Tcr => (tcr_rect, &model.tcr_input, tcr_scroll),
+            let (rect, input, scroll) = match model.specs_to_color.focus {
+                InputFocus::Resistance => (
+                    resistance_rect,
+                    &model.specs_to_color.resistance_input,
+                    resistance_scroll,
+                ),
+                InputFocus::Tolerance => (
+                    tolerance_rect,
+                    &model.specs_to_color.tolerance_input,
+                    tolerance_scroll,
+                ),
+                InputFocus::Tcr => (tcr_rect, &model.specs_to_color.tcr_input, tcr_scroll),
             };
             frame.set_cursor_position((
                 // Put cursor past the end of the input text
@@ -369,7 +394,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 rect.y + 1,
             ));
 
-            if let Some(resistor) = &model.resistor {
+            if let Some(resistor) = &model.specs_to_color.resistor {
                 let colors = resistor
                     .bands()
                     .iter()
@@ -379,7 +404,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
                 frame.render_widget(chart, main_rect);
             }
-            if let Some(e) = &model.error {
+            if let Some(e) = &model.specs_to_color.error {
                 let text = Text::from(e.to_string());
                 let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
                 frame.render_widget(error_message, main_rect);
@@ -420,10 +445,10 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
         (KeyCode::Down, SelectedTab::ColorCodesToSpecs) => Some(Msg::NextColor),
         (KeyCode::Esc, _) => Some(Msg::Exit),
         _ => {
-            let target_input = match model.focus {
-                InputFocus::Resistance => &mut model.resistance_input,
-                InputFocus::Tolerance => &mut model.tolerance_input,
-                InputFocus::Tcr => &mut model.tcr_input,
+            let target_input = match model.specs_to_color.focus {
+                InputFocus::Resistance => &mut model.specs_to_color.resistance_input,
+                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input,
+                InputFocus::Tcr => &mut model.specs_to_color.tcr_input,
             };
             target_input.handle_event(&Event::Key(key));
             None
@@ -436,28 +461,28 @@ pub fn update(model: &mut Model, msg: Msg) {
         Msg::ToggleTab => model.selected_tab = model.selected_tab.toggle(),
         Msg::Determine => {
             match try_determine_resistor(
-                model.resistance_input.value(),
-                model.tolerance_input.value(),
-                model.tcr_input.value(),
+                model.specs_to_color.resistance_input.value(),
+                model.specs_to_color.tolerance_input.value(),
+                model.specs_to_color.tcr_input.value(),
             ) {
                 Ok(resistor) => {
-                    model.resistor = Some(resistor);
-                    model.error = None;
+                    model.specs_to_color.resistor = Some(resistor);
+                    model.specs_to_color.error = None;
                 }
                 Err(e) => {
-                    model.resistor = None;
-                    model.error = Some(e);
+                    model.specs_to_color.resistor = None;
+                    model.specs_to_color.error = Some(e);
                 }
             }
-            model.resistance_input.reset();
-            model.tolerance_input.reset();
-            model.tcr_input.reset();
-            model.focus = InputFocus::Resistance;
+            model.specs_to_color.resistance_input.reset();
+            model.specs_to_color.tolerance_input.reset();
+            model.specs_to_color.tcr_input.reset();
+            model.specs_to_color.focus = InputFocus::Resistance;
         }
         Msg::NextSpecInput | Msg::PrevSpecInput => {
-            model.error = match model.focus {
+            model.specs_to_color.error = match model.specs_to_color.focus {
                 InputFocus::Resistance => {
-                    let value = model.resistance_input.value();
+                    let value = model.specs_to_color.resistance_input.value();
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -465,7 +490,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                     }
                 }
                 InputFocus::Tolerance => {
-                    let value = model.tolerance_input.value();
+                    let value = model.specs_to_color.tolerance_input.value();
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -473,7 +498,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                     }
                 }
                 InputFocus::Tcr => {
-                    let value = model.tcr_input.value();
+                    let value = model.specs_to_color.tcr_input.value();
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -481,27 +506,41 @@ pub fn update(model: &mut Model, msg: Msg) {
                     }
                 }
             };
-            if model.error.is_none() {
-                model.focus = match msg {
-                    Msg::NextSpecInput => model.focus.next(),
-                    _ => model.focus.prev(),
+            if model.specs_to_color.error.is_none() {
+                model.specs_to_color.focus = match msg {
+                    Msg::NextSpecInput => model.specs_to_color.focus.next(),
+                    _ => model.specs_to_color.focus.prev(),
                 };
             } else {
-                model.resistor = None;
+                model.specs_to_color.resistor = None;
             }
         }
         Msg::Exit => {
             model.running = false;
         }
-        Msg::NextBand => model.selected_band = (model.selected_band + 1) % 6,
-        Msg::PrevBand => model.selected_band = (model.selected_band + 5) % 6,
+        Msg::NextBand => {
+            model.color_codes_to_specs.selected_band =
+                (model.color_codes_to_specs.selected_band + 1) % 6
+        }
+        Msg::PrevBand => {
+            model.color_codes_to_specs.selected_band =
+                (model.color_codes_to_specs.selected_band + 5) % 6
+        }
         Msg::NextColor => {
-            model.selected_in_bands[model.selected_band] =
-                (model.selected_in_bands[model.selected_band] + 1) % 13;
+            model.color_codes_to_specs.selected_in_bands
+                [model.color_codes_to_specs.selected_band] = (model
+                .color_codes_to_specs
+                .selected_in_bands[model.color_codes_to_specs.selected_band]
+                + 1)
+                % 13;
         }
         Msg::PrevColor => {
-            model.selected_in_bands[model.selected_band] =
-                (model.selected_in_bands[model.selected_band] + 12) % 13;
+            model.color_codes_to_specs.selected_in_bands
+                [model.color_codes_to_specs.selected_band] = (model
+                .color_codes_to_specs
+                .selected_in_bands[model.color_codes_to_specs.selected_band]
+                + 12)
+                % 13;
         }
     }
 }

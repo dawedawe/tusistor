@@ -636,44 +636,39 @@ pub fn update(model: &mut Model, msg: Msg) {
         Msg::ColorCodesMsg {
             msg: ColorCodesMsg::NextColor,
         } => {
-            let mut bands: Vec<rusistor::Color> = model
-                .color_codes_to_specs
-                .resistor
-                .bands()
-                .into_iter()
-                .cloned()
-                .collect();
-            let current_idx = color_to_index(&bands[model.color_codes_to_specs.selected_band]);
+            let current_idx = color_to_index(
+                model.color_codes_to_specs.resistor.bands()
+                    [model.color_codes_to_specs.selected_band],
+            );
 
             let mut i: usize = 0;
             let mut resistor = Err("".to_string());
             while resistor.is_err() {
                 i += 1;
                 let next_color = index_to_color((current_idx + i) % 13);
-                bands[model.color_codes_to_specs.selected_band] = next_color;
-                resistor = Resistor::try_create(bands.clone());
+                resistor = model
+                    .color_codes_to_specs
+                    .resistor
+                    .with_color(next_color, model.color_codes_to_specs.selected_band);
             }
             model.color_codes_to_specs.resistor = resistor.unwrap();
         }
         Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevColor,
         } => {
-            let mut bands: Vec<rusistor::Color> = model
-                .color_codes_to_specs
-                .resistor
-                .bands()
-                .into_iter()
-                .cloned()
-                .collect();
-            let current_idx = color_to_index(&bands[model.color_codes_to_specs.selected_band]);
-
+            let current_idx = color_to_index(
+                model.color_codes_to_specs.resistor.bands()
+                    [model.color_codes_to_specs.selected_band],
+            );
             let mut i: usize = 13;
             let mut resistor = Err("".to_string());
             while resistor.is_err() {
                 i -= 1;
                 let next_color = index_to_color((current_idx + i) % 13);
-                bands[model.color_codes_to_specs.selected_band] = next_color;
-                resistor = Resistor::try_create(bands.clone());
+                resistor = model
+                    .color_codes_to_specs
+                    .resistor
+                    .with_color(next_color, model.color_codes_to_specs.selected_band);
             }
             model.color_codes_to_specs.resistor = resistor.unwrap();
         }

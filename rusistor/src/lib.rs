@@ -745,6 +745,16 @@ impl Resistor {
         }
     }
 
+    pub fn with_color(&self, color: Color, band_idx: usize) -> Result<Resistor, String> {
+        let mut current = self.bands();
+        if band_idx < current.len() {
+            current[band_idx] = &color;
+            Resistor::try_create(current.into_iter().cloned().collect())
+        } else {
+            Err("given band_idx out of bounds".to_string())
+        }
+    }
+
     pub fn determine_digits_and_exponent(ohm: f64) -> Result<(Vec<u32>, i32), String> {
         let mut exponent = 0i32;
         let mut s = ohm.to_string();

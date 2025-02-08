@@ -294,13 +294,14 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
             let (msg, style) = (
                 vec![
-                    Span::raw("Press "),
-                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to exit, "),
                     Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to move to the next input, "),
+                    Span::raw(": next input, "),
                     Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(" to determine the resistor."),
+                    Span::raw(": calculate color codes, "),
+                    Span::styled("←/→", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": prev/next tab, "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": exit"),
                 ],
                 Style::default(),
             );

@@ -171,6 +171,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     [
                         Constraint::Length(2),
                         Constraint::Max(3),
+                        Constraint::Max(3),
                         Constraint::Max(15),
                         Constraint::Min(1),
                     ]
@@ -178,6 +179,8 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 )
                 .split(frame.area());
             let tabs_rect = chunks[0];
+
+            let help_msg_rect = chunks[1];
 
             let spec_chuncks = Layout::default()
                 .direction(Direction::Horizontal)
@@ -189,7 +192,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Constraint::Ratio(1, 6),
                     Constraint::Ratio(1, 6),
                 ])
-                .split(chunks[1]);
+                .split(chunks[2]);
 
             let bands_rect = Layout::default()
                 .direction(Direction::Horizontal)
@@ -201,7 +204,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Constraint::Ratio(1, 6),
                     Constraint::Ratio(1, 6),
                 ])
-                .split(chunks[2]);
+                .split(chunks[3]);
 
             let tabs = tabs(&model.selected_tab);
             frame.render_widget(tabs, tabs_rect);
@@ -241,6 +244,25 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     .style(Style::default().fg(Color::Yellow))
                     .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
             frame.render_widget(tcr_paragraph, spec_chuncks[4]);
+
+            let (msg, style) = (
+                vec![
+                    Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": next band, "),
+                    Span::styled("↑/↓", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": prev/next color, "),
+                    Span::styled("3|4|5|6", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": bands count, "),
+                    Span::styled("←/→", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": prev/next tab, "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": exit"),
+                ],
+                Style::default(),
+            );
+            let text = Text::from(Line::from(msg)).style(style);
+            let help_message = Paragraph::new(text);
+            frame.render_widget(help_message, help_msg_rect);
 
             let bands = model.color_codes_to_specs.resistor.bands();
             for i in 0..bands.len() {

@@ -576,7 +576,9 @@ pub fn update(model: &mut Model, msg: Msg) {
                 band1: rusistor::Color::Brown,
                 band2: rusistor::Color::Black,
                 band3: rusistor::Color::Black,
-            }
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(2)
         }
         Msg::ColorCodesMsg {
             msg: ColorCodesMsg::FourBands,
@@ -586,7 +588,9 @@ pub fn update(model: &mut Model, msg: Msg) {
                 band2: rusistor::Color::Black,
                 band3: rusistor::Color::Black,
                 band4: rusistor::Color::Brown,
-            }
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(3)
         }
         Msg::ColorCodesMsg {
             msg: ColorCodesMsg::FiveBands,
@@ -597,7 +601,9 @@ pub fn update(model: &mut Model, msg: Msg) {
                 band3: rusistor::Color::Black,
                 band4: rusistor::Color::Black,
                 band5: rusistor::Color::Brown,
-            }
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(4)
         }
         Msg::ColorCodesMsg {
             msg: ColorCodesMsg::SixBands,
@@ -609,7 +615,9 @@ pub fn update(model: &mut Model, msg: Msg) {
                 band4: rusistor::Color::Black,
                 band5: rusistor::Color::Brown,
                 band6: rusistor::Color::Black,
-            }
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(5)
         }
         Msg::ColorCodesMsg {
             msg: ColorCodesMsg::NextBand,

@@ -141,19 +141,25 @@ fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
     .iter()
     .map(|color| {
         let numeric_info = match (bands, band_idx) {
-            (3, i) | (4, i) if i <= 1 => color.as_digit().map_or("".to_string(), |s| s.to_string()),
-            (5, i) | (6, i) if i <= 2 => color.as_digit().map_or("".to_string(), |s| s.to_string()),
+            (3, i) | (4, i) if i <= 1 => {
+                color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+            }
+            (5, i) | (6, i) if i <= 2 => {
+                color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+            }
             (3, 2) | (4, 2) | (5, 3) | (6, 3) => {
                 format!("10^{}", color.as_digit_or_exponent())
             }
             (4, 3) | (5, 4) | (6, 4) => color
                 .as_tolerance()
-                .map_or("".to_string(), |s| (s * 100.0).to_string()),
-            (6, 5) => color.as_tcr().map_or("".to_string(), |s| s.to_string()),
+                .map_or("    ".to_string(), |s| format!("{:>4}", (s * 100.0))),
+            (6, 5) => color
+                .as_tcr()
+                .map_or("   ".to_string(), |s| format!("{:>3}", s.to_string())),
             _ => "".to_string(),
         };
         let (color, name) = rusistor_color_to_ratatui_color(color);
-        let s = format!("{name} {numeric_info}");
+        let s = format!(" {numeric_info} {name}");
         let style = if color == Color::Black {
             Style::default().bg(color)
         } else {

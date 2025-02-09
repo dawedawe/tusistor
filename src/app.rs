@@ -122,7 +122,10 @@ fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
         .select(selected)
 }
 
-fn band_list<'a>(number: usize, is_focused: bool) -> List<'a> {
+fn band_list<'a, F>(number: usize, is_focused: bool, f: F) -> List<'a>
+where
+    F: Fn(&rusistor::Color) -> String,
+{
     let items = [
         rusistor::Color::Black,
         rusistor::Color::Brown,
@@ -140,7 +143,9 @@ fn band_list<'a>(number: usize, is_focused: bool) -> List<'a> {
     ]
     .iter()
     .map(|color| {
-        let (c, s) = rusistor_color_to_ratatui_color(color);
+        let numeric_info = f(color);
+        let (c, name) = rusistor_color_to_ratatui_color(color);
+        let s = format!("{name} {numeric_info}");
         ListItem::new(s).bg(c)
     });
 
@@ -268,7 +273,20 @@ pub fn view(model: &Model, frame: &mut Frame) {
             for i in 0..bands.len() {
                 let mut state = ListState::default().with_selected(Some(color_to_index(bands[i])));
                 let is_focused = model.color_codes_to_specs.selected_band == i;
-                let list = band_list(i + 1, is_focused);
+                let list = band_list(i + 1, is_focused, |color| match (bands.len(), i) {
+                    (3, i) | (4, i) if i <= 1 => {
+                        color.as_digit().map_or("".to_string(), |s| s.to_string())
+                    }
+                    (5, i) | (6, i) if i <= 2 => {
+                        color.as_digit().map_or("".to_string(), |s| s.to_string())
+                    }
+                    (3, 2) | (4, 2) | (5, 3) | (6, 3) => color.as_digit_or_exponent().to_string(),
+                    (4, 3) | (5, 4) | (6, 4) => color
+                        .as_tolerance()
+                        .map_or("".to_string(), |s| (s * 100.0).to_string()),
+                    (6, 5) => color.as_tcr().map_or("".to_string(), |s| s.to_string()),
+                    _ => "".to_string(),
+                });
                 frame.render_stateful_widget(list, bands_rect[i], &mut state);
             }
         }

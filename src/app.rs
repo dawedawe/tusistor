@@ -117,7 +117,7 @@ impl Default for Model {
 }
 
 fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
-    Tabs::new(vec!["color codes to specs", "specs to color codes"])
+    Tabs::new(vec![" color codes to specs ", " specs to color codes "])
         .padding(" ", " ")
         .select(selected)
 }
@@ -180,7 +180,12 @@ fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
     List::new(items)
         .block(
             Block::bordered()
-                .title(format!(" Band {}: {} ", band_idx + 1, semantic_info))
+                .title(format!(
+                    " Band {}: {}{}",
+                    band_idx + 1,
+                    semantic_info,
+                    if is_focused { "* " } else { " " }
+                ))
                 .style(style),
         )
         .highlight_symbol(">> ")
@@ -198,7 +203,6 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     [
                         Constraint::Length(2),
                         Constraint::Length(3),
-                        Constraint::Length(3),
                         Constraint::Length(15),
                         Constraint::Min(1),
                     ]
@@ -206,8 +210,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 )
                 .split(frame.area());
             let tabs_rect = chunks[0];
-
-            let help_msg_rect = chunks[1];
+            let help_msg_rect = chunks[3];
 
             let spec_chuncks = Layout::default()
                 .direction(Direction::Horizontal)
@@ -219,7 +222,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Constraint::Ratio(1, 6),
                     Constraint::Ratio(1, 6),
                 ])
-                .split(chunks[2]);
+                .split(chunks[1]);
 
             let bands_rect = Layout::default()
                 .direction(Direction::Horizontal)
@@ -231,7 +234,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Constraint::Ratio(1, 6),
                     Constraint::Ratio(1, 6),
                 ])
-                .split(chunks[3]);
+                .split(chunks[2]);
 
             let tabs = tabs(&model.selected_tab);
             frame.render_widget(tabs, tabs_rect);
@@ -318,9 +321,9 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .constraints(
                     [
                         Constraint::Length(2),
-                        Constraint::Length(1),
                         Constraint::Length(3),
                         Constraint::Min(1),
+                        Constraint::Length(1),
                     ]
                     .as_ref(),
                 )
@@ -332,7 +335,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Constraint::Ratio(1, 3),
                     Constraint::Ratio(1, 3),
                 ])
-                .split(chunks[2]);
+                .split(chunks[1]);
 
             let main_rects = Layout::default()
                 .direction(Direction::Horizontal)
@@ -341,10 +344,10 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Constraint::Percentage(80),
                     Constraint::Percentage(10),
                 ])
-                .split(chunks[3]);
+                .split(chunks[2]);
 
             let tabs_rect = chunks[0];
-            let help_msg_rect = chunks[1];
+            let help_msg_rect = chunks[3];
             let resistance_rect = input_rects[0];
             let tolerance_rect = input_rects[1];
             let tcr_rect = input_rects[2];

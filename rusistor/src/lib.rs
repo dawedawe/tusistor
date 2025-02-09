@@ -1,5 +1,8 @@
 use core::panic;
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    fmt::{self, Display, Formatter},
+};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Color {
@@ -19,7 +22,25 @@ pub enum Color {
 }
 
 impl Color {
-    fn as_digit_or_exponent(&self) -> f64 {
+    pub fn as_digit(&self) -> Option<usize> {
+        match self {
+            Color::Black => Some(0),
+            Color::Brown => Some(1),
+            Color::Red => Some(2),
+            Color::Orange => Some(3),
+            Color::Yellow => Some(4),
+            Color::Green => Some(5),
+            Color::Blue => Some(6),
+            Color::Violet => Some(7),
+            Color::Grey => Some(8),
+            Color::White => Some(9),
+            Color::Gold => None,
+            Color::Silver => None,
+            Color::Pink => None,
+        }
+    }
+
+    pub fn as_digit_or_exponent(&self) -> f64 {
         match self {
             Color::Black => 0.0,
             Color::Brown => 1.0,
@@ -37,39 +58,39 @@ impl Color {
         }
     }
 
-    fn as_tolerance(&self) -> f64 {
+    pub fn as_tolerance(&self) -> Option<f64> {
         match self {
-            Color::Black => panic!("invalid tolerance color"),
-            Color::Brown => 0.01,
-            Color::Red => 0.02,
-            Color::Orange => 0.0005,
-            Color::Yellow => 0.0002,
-            Color::Green => 0.005,
-            Color::Blue => 0.0025,
-            Color::Violet => 0.001,
-            Color::Grey => 0.0001,
-            Color::White => panic!("invalid tolerance color"),
-            Color::Gold => 0.05,
-            Color::Silver => 0.1,
-            Color::Pink => panic!("invalid tolerance color"),
+            Color::Black => None,
+            Color::Brown => Some(0.01),
+            Color::Red => Some(0.02),
+            Color::Orange => Some(0.0005),
+            Color::Yellow => Some(0.0002),
+            Color::Green => Some(0.005),
+            Color::Blue => Some(0.0025),
+            Color::Violet => Some(0.001),
+            Color::Grey => Some(0.0001),
+            Color::White => None,
+            Color::Gold => Some(0.05),
+            Color::Silver => Some(0.1),
+            Color::Pink => None,
         }
     }
 
-    fn as_tcr(&self) -> u32 {
+    pub fn as_tcr(&self) -> Option<u32> {
         match self {
-            Color::Black => 250,
-            Color::Brown => 100,
-            Color::Red => 50,
-            Color::Orange => 15,
-            Color::Yellow => 25,
-            Color::Green => 20,
-            Color::Blue => 10,
-            Color::Violet => 5,
-            Color::Grey => 1,
-            Color::White => panic!("invalid tcr color"),
-            Color::Gold => panic!("invalid tcr color"),
-            Color::Silver => panic!("invalid tcr color"),
-            Color::Pink => panic!("invalid tcr color"),
+            Color::Black => Some(250),
+            Color::Brown => Some(100),
+            Color::Red => Some(50),
+            Color::Orange => Some(15),
+            Color::Yellow => Some(25),
+            Color::Green => Some(20),
+            Color::Blue => Some(10),
+            Color::Violet => Some(5),
+            Color::Grey => Some(1),
+            Color::White => None,
+            Color::Gold => None,
+            Color::Silver => None,
+            Color::Pink => None,
         }
     }
 
@@ -123,6 +144,27 @@ impl From<i32> for Color {
             -3 => Color::Pink,
             _ => panic!("invalid value {} given to Color::from", value),
         }
+    }
+}
+
+impl Display for Color {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let s = match self {
+            Color::Black => String::from("black"),
+            Color::Brown => String::from("brown"),
+            Color::Red => String::from("red"),
+            Color::Orange => String::from("orange"),
+            Color::Yellow => String::from("yellow"),
+            Color::Green => String::from("green"),
+            Color::Blue => String::from("blue"),
+            Color::Violet => String::from("violet"),
+            Color::Grey => String::from("grey"),
+            Color::White => String::from("white"),
+            Color::Gold => String::from("gold"),
+            Color::Silver => String::from("silver"),
+            Color::Pink => String::from("pink"),
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -577,7 +619,7 @@ impl Resistor {
                 band5,
             })
         } else {
-            Err(String::from("no valid 4-band resistor"))
+            Err(String::from("no valid 5-band resistor"))
         }
     }
 
@@ -605,7 +647,7 @@ impl Resistor {
                 band6,
             })
         } else {
-            Err(String::from("no valid 4-band resistor"))
+            Err(String::from("no valid 6-band resistor"))
         }
     }
 
@@ -650,7 +692,9 @@ impl Resistor {
                 let digit1 = band1.as_digit_or_exponent();
                 let digit2 = band2.as_digit_or_exponent();
                 let exponent = band3.as_digit_or_exponent();
-                let tolerance = band4.as_tolerance();
+                let tolerance = band4
+                    .as_tolerance()
+                    .expect("valid tolerance color expected");
                 let multiplier = 10.0f64.powf(exponent);
                 let ohm = (digit1 * 10.0 + digit2) * multiplier;
                 let tolerance_ohm = ohm * tolerance;
@@ -676,7 +720,9 @@ impl Resistor {
                 let digit2 = band2.as_digit_or_exponent();
                 let digit3 = band3.as_digit_or_exponent();
                 let exponent = band4.as_digit_or_exponent();
-                let tolerance = band5.as_tolerance();
+                let tolerance = band5
+                    .as_tolerance()
+                    .expect("valid tolerance color expected");
                 let multiplier = 10.0f64.powf(exponent);
                 let ohm = (digit1 * 100.0 + digit2 * 10.0 + digit3) * multiplier;
                 let tolerance_ohm = ohm * tolerance;
@@ -703,8 +749,10 @@ impl Resistor {
                 let digit2 = band2.as_digit_or_exponent();
                 let digit3 = band3.as_digit_or_exponent();
                 let exponent = band4.as_digit_or_exponent();
-                let tolerance = band5.as_tolerance();
-                let tcr = Some(band6.as_tcr());
+                let tolerance = band5
+                    .as_tolerance()
+                    .expect("valid tolerance color expected");
+                let tcr = band6.as_tcr();
                 let multiplier = 10.0f64.powf(exponent);
                 let ohm = (digit1 * 100.0 + digit2 * 10.0 + digit3) * multiplier;
                 let tolerance_ohm = ohm * tolerance;
@@ -718,6 +766,16 @@ impl Resistor {
                     tcr,
                 }
             }
+        }
+    }
+
+    pub fn with_color(&self, color: Color, band_idx: usize) -> Result<Resistor, String> {
+        let mut current = self.bands();
+        if band_idx < current.len() {
+            current[band_idx] = &color;
+            Resistor::try_create(current.into_iter().cloned().collect())
+        } else {
+            Err("given band_idx out of bounds".to_string())
         }
     }
 

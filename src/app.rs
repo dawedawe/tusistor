@@ -4,7 +4,10 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span, Text},
-    widgets::{Bar, BarChart, BarGroup, Block, Borders, Paragraph},
+    widgets::{
+        Bar, BarChart, BarGroup, Block, Borders, List, ListDirection, ListItem, ListState,
+        Paragraph, Tabs,
+    },
     Frame,
 };
 use rusistor::{self, Resistor};
@@ -37,9 +40,33 @@ impl InputFocus {
     }
 }
 
-#[derive(Debug)]
-pub struct Model {
-    pub running: bool,
+#[derive(Debug, Default)]
+pub enum SelectedTab {
+    #[default]
+    ColorCodesToSpecs,
+    SpecsToColorCodes,
+}
+
+impl SelectedTab {
+    fn toggle(&self) -> SelectedTab {
+        match self {
+            SelectedTab::ColorCodesToSpecs => SelectedTab::SpecsToColorCodes,
+            SelectedTab::SpecsToColorCodes => SelectedTab::ColorCodesToSpecs,
+        }
+    }
+}
+
+impl From<&SelectedTab> for Option<usize> {
+    fn from(selected_tab: &SelectedTab) -> Self {
+        match selected_tab {
+            SelectedTab::ColorCodesToSpecs => Some(0),
+            SelectedTab::SpecsToColorCodes => Some(1),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct SpecsToColorModel {
     pub resistance_input: Input,
     pub tolerance_input: Input,
     pub tcr_input: Input,
@@ -48,148 +75,426 @@ pub struct Model {
     pub error: Option<String>,
 }
 
-impl Default for Model {
-    fn default() -> Model {
-        Model {
-            running: true,
-            resistance_input: Input::default(),
-            tolerance_input: Input::default(),
-            tcr_input: Input::default(),
-            focus: InputFocus::default(),
-            resistor: None,
-            error: None,
+#[derive(Debug)]
+pub struct ColorCodesToSpecsModel {
+    pub selected_band: usize,
+    pub resistor: Resistor,
+}
+
+impl Default for ColorCodesToSpecsModel {
+    fn default() -> ColorCodesToSpecsModel {
+        ColorCodesToSpecsModel {
+            selected_band: 0,
+            resistor: Resistor::SixBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+                band6: rusistor::Color::Black,
+            },
         }
     }
 }
 
-pub fn view(model: &Model, frame: &mut Frame) {
-    let chunks = Layout::default()
-        .direction(Direction::Vertical)
-        .margin(2)
-        .constraints(
-            [
-                Constraint::Length(1),
-                Constraint::Length(3),
-                Constraint::Min(1),
-            ]
-            .as_ref(),
-        )
-        .split(frame.area());
-    let input_rects = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Ratio(1, 3),
-            Constraint::Ratio(1, 3),
-            Constraint::Ratio(1, 3),
-        ])
-        .split(chunks[1]);
+#[derive(Debug)]
+pub struct Model {
+    pub running: bool,
+    pub selected_tab: SelectedTab,
+    pub specs_to_color: SpecsToColorModel,
+    pub color_codes_to_specs: ColorCodesToSpecsModel,
+}
 
-    let main_rects = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(10),
-            Constraint::Percentage(80),
-            Constraint::Percentage(10),
-        ])
-        .split(chunks[2]);
-
-    let help_msg_rect = chunks[0];
-    let resistance_rect = input_rects[0];
-    let tolerance_rect = input_rects[1];
-    let tcr_rect = input_rects[2];
-    let main_rect = main_rects[1];
-
-    let (msg, style) = (
-        vec![
-            Span::raw("Press "),
-            Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" to exit, "),
-            Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" to move to the next input, "),
-            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" to determine the resistor."),
-        ],
-        Style::default(),
-    );
-    let text = Text::from(Line::from(msg)).style(style);
-    let help_message = Paragraph::new(text);
-    frame.render_widget(help_message, help_msg_rect);
-
-    let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-    let resistance_scroll = model
-        .resistance_input
-        .visual_scroll(resistance_width as usize);
-    let resistance_paragraph = Paragraph::new(model.resistance_input.value())
-        .style(Style::default().fg(Color::Yellow))
-        .scroll((0, resistance_scroll as u16))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Resistance (Ohm) "),
-        );
-    frame.render_widget(resistance_paragraph, resistance_rect);
-
-    let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-    let tolerance_scroll = model
-        .tolerance_input
-        .visual_scroll(tolerance_width as usize);
-    let tolerance_paragraph = Paragraph::new(model.tolerance_input.value())
-        .style(Style::default().fg(Color::Yellow))
-        .scroll((0, tolerance_scroll as u16))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" Tolerance (%) "),
-        );
-    frame.render_widget(tolerance_paragraph, tolerance_rect);
-
-    let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-    let tcr_scroll = model.tcr_input.visual_scroll(tcr_width as usize);
-    let tcr_paragraph = Paragraph::new(model.tcr_input.value())
-        .style(Style::default().fg(Color::Yellow))
-        .scroll((0, tcr_scroll as u16))
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(" TCR (ppm/K) "),
-        );
-    frame.render_widget(tcr_paragraph, tcr_rect);
-
-    // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-    let (rect, input, scroll) = match model.focus {
-        InputFocus::Resistance => (resistance_rect, &model.resistance_input, resistance_scroll),
-        InputFocus::Tolerance => (tolerance_rect, &model.tolerance_input, tolerance_scroll),
-        InputFocus::Tcr => (tcr_rect, &model.tcr_input, tcr_scroll),
-    };
-    frame.set_cursor_position((
-        // Put cursor past the end of the input text
-        rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
-        // Move one line down, from the border to the input line
-        rect.y + 1,
-    ));
-
-    if let Some(resistor) = &model.resistor {
-        let colors = resistor
-            .bands()
-            .iter()
-            .map(|c| rusistor_color_to_ratatui_color(c))
-            .collect::<Vec<(Color, String)>>();
-        let specs = resistor.specs();
-        let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
-        frame.render_widget(chart, main_rect);
-    }
-    if let Some(e) = &model.error {
-        let text = Text::from(e.to_string());
-        let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
-        frame.render_widget(error_message, main_rect);
+impl Default for Model {
+    fn default() -> Model {
+        Model {
+            running: true,
+            selected_tab: SelectedTab::default(),
+            specs_to_color: SpecsToColorModel::default(),
+            color_codes_to_specs: ColorCodesToSpecsModel::default(),
+        }
     }
 }
 
-pub enum Msg {
+fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
+    Tabs::new(vec![" color codes to specs ", " specs to color codes "])
+        .padding(" ", " ")
+        .select(selected)
+}
+
+fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
+    let items = [
+        rusistor::Color::Black,
+        rusistor::Color::Brown,
+        rusistor::Color::Red,
+        rusistor::Color::Orange,
+        rusistor::Color::Yellow,
+        rusistor::Color::Green,
+        rusistor::Color::Blue,
+        rusistor::Color::Violet,
+        rusistor::Color::Grey,
+        rusistor::Color::White,
+        rusistor::Color::Gold,
+        rusistor::Color::Silver,
+        rusistor::Color::Pink,
+    ]
+    .iter()
+    .map(|color| {
+        let numeric_info = match (bands, band_idx) {
+            (3, i) | (4, i) if i <= 1 => {
+                if i == 0 && *color == rusistor::Color::Black {
+                    " ".to_string()
+                } else {
+                    color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                }
+            }
+            (5, i) | (6, i) if i <= 2 => {
+                if i == 0 && *color == rusistor::Color::Black {
+                    " ".to_string()
+                } else {
+                    color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                }
+            }
+            (3, 2) | (4, 2) | (5, 3) | (6, 3) => {
+                format!("10^{}", color.as_digit_or_exponent())
+            }
+            (4, 3) | (5, 4) | (6, 4) => color
+                .as_tolerance()
+                .map_or("    ".to_string(), |s| format!("{:>4}", (s * 100.0))),
+            (6, 5) => color
+                .as_tcr()
+                .map_or("   ".to_string(), |s| format!("{:>3}", s.to_string())),
+            _ => "".to_string(),
+        };
+        let (color, name) = rusistor_color_to_ratatui_color(color);
+        let s = format!(" {numeric_info} {name}");
+        let style = if color == Color::Black {
+            Style::default().bg(color)
+        } else {
+            Style::default().bg(color).fg(Color::Black)
+        };
+        ListItem::new(s).style(style)
+    });
+
+    let style = if is_focused {
+        Style::default().add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+    };
+
+    let semantic_info = match (bands, band_idx) {
+        (3, i) | (4, i) if i <= 1 => format!("Digit {}", band_idx + 1),
+        (5, i) | (6, i) if i <= 2 => format!("Digit {}", band_idx + 1),
+        (3, 2) | (4, 2) | (5, 3) | (6, 3) => "Multiplier".to_string(),
+        (4, 3) | (5, 4) | (6, 4) => "Tolerance".to_string(),
+        (6, 5) => "TCR".to_string(),
+        _ => "".to_string(),
+    };
+
+    List::new(items)
+        .block(
+            Block::bordered()
+                .title(format!(
+                    " Band {}: {}{}",
+                    band_idx + 1,
+                    semantic_info,
+                    if is_focused { "* " } else { " " }
+                ))
+                .style(style),
+        )
+        .highlight_symbol(">> ")
+        .repeat_highlight_symbol(true)
+        .direction(ListDirection::TopToBottom)
+}
+
+pub fn view(model: &Model, frame: &mut Frame) {
+    match model.selected_tab {
+        SelectedTab::ColorCodesToSpecs => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints(
+                    [
+                        Constraint::Length(2),
+                        Constraint::Length(3),
+                        Constraint::Length(15),
+                        Constraint::Min(1),
+                    ]
+                    .as_ref(),
+                )
+                .split(frame.area());
+            let tabs_rect = chunks[0];
+            let help_msg_rect = chunks[3];
+
+            let spec_chuncks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                ])
+                .split(chunks[1]);
+
+            let bands_rect = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                    Constraint::Ratio(1, 6),
+                ])
+                .split(chunks[2]);
+
+            let tabs = tabs(&model.selected_tab);
+            frame.render_widget(tabs, tabs_rect);
+
+            let specs = model.color_codes_to_specs.resistor.specs();
+
+            let resistance_paragraph = Paragraph::new(specs.ohm.to_string())
+                .style(Style::default().fg(Color::Yellow))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Resistance (Ω) "),
+                );
+            frame.render_widget(resistance_paragraph, spec_chuncks[0]);
+
+            let tolerance_paragraph = Paragraph::new(format!("±{}", (specs.tolerance * 100.0)))
+                .style(Style::default().fg(Color::Yellow))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Tolerance (%) "),
+                );
+            frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
+
+            let min_paragraph = Paragraph::new(specs.min_ohm.to_string())
+                .style(Style::default().fg(Color::Yellow))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Minimum (Ω) "),
+                );
+            frame.render_widget(min_paragraph, spec_chuncks[2]);
+
+            let max_paragraph = Paragraph::new(specs.max_ohm.to_string())
+                .style(Style::default().fg(Color::Yellow))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Maximum (Ω) "),
+                );
+            frame.render_widget(max_paragraph, spec_chuncks[3]);
+
+            let tcr_paragraph =
+                Paragraph::new(specs.tcr.map(|f| f.to_string()).unwrap_or_default())
+                    .style(Style::default().fg(Color::Yellow))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(" TCR (ppm/K) "),
+                    );
+            frame.render_widget(tcr_paragraph, spec_chuncks[4]);
+
+            let (msg, style) = (
+                vec![
+                    Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": next band, "),
+                    Span::styled("↑/↓", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": prev/next color, "),
+                    Span::styled("3|4|5|6", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": bands count, "),
+                    Span::styled("←/→", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": prev/next tab, "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": exit"),
+                ],
+                Style::default(),
+            );
+            let text = Text::from(Line::from(msg)).style(style);
+            let help_message = Paragraph::new(text);
+            frame.render_widget(help_message, help_msg_rect);
+
+            let bands = model.color_codes_to_specs.resistor.bands();
+            for i in 0..bands.len() {
+                let mut state = ListState::default().with_selected(Some(color_to_index(bands[i])));
+                let is_focused = model.color_codes_to_specs.selected_band == i;
+                let list = band_list(i, bands.len(), is_focused);
+                frame.render_stateful_widget(list, bands_rect[i], &mut state);
+            }
+        }
+        SelectedTab::SpecsToColorCodes => {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(2)
+                .constraints(
+                    [
+                        Constraint::Length(2),
+                        Constraint::Length(3),
+                        Constraint::Min(1),
+                        Constraint::Length(1),
+                    ]
+                    .as_ref(),
+                )
+                .split(frame.area());
+            let input_rects = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                ])
+                .split(chunks[1]);
+
+            let main_rects = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Percentage(10),
+                    Constraint::Percentage(80),
+                    Constraint::Percentage(10),
+                ])
+                .split(chunks[2]);
+
+            let tabs_rect = chunks[0];
+            let help_msg_rect = chunks[3];
+            let resistance_rect = input_rects[0];
+            let tolerance_rect = input_rects[1];
+            let tcr_rect = input_rects[2];
+            let main_rect = main_rects[1];
+
+            let tabs = tabs(&model.selected_tab);
+            frame.render_widget(tabs, tabs_rect);
+
+            let (msg, style) = (
+                vec![
+                    Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": next input, "),
+                    Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": calculate color codes, "),
+                    Span::styled("←/→", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": prev/next tab, "),
+                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": exit"),
+                ],
+                Style::default(),
+            );
+            let text = Text::from(Line::from(msg)).style(style);
+            let help_message = Paragraph::new(text);
+            frame.render_widget(help_message, help_msg_rect);
+
+            let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+            let resistance_scroll = model
+                .specs_to_color
+                .resistance_input
+                .visual_scroll(resistance_width as usize);
+            let resistance_paragraph =
+                Paragraph::new(model.specs_to_color.resistance_input.value())
+                    .style(Style::default().fg(Color::Yellow))
+                    .scroll((0, resistance_scroll as u16))
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(" Resistance (Ω) "),
+                    );
+            frame.render_widget(resistance_paragraph, resistance_rect);
+
+            let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+            let tolerance_scroll = model
+                .specs_to_color
+                .tolerance_input
+                .visual_scroll(tolerance_width as usize);
+            let tolerance_paragraph = Paragraph::new(model.specs_to_color.tolerance_input.value())
+                .style(Style::default().fg(Color::Yellow))
+                .scroll((0, tolerance_scroll as u16))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Tolerance (%) "),
+                );
+            frame.render_widget(tolerance_paragraph, tolerance_rect);
+
+            let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
+            let tcr_scroll = model
+                .specs_to_color
+                .tcr_input
+                .visual_scroll(tcr_width as usize);
+            let tcr_paragraph = Paragraph::new(model.specs_to_color.tcr_input.value())
+                .style(Style::default().fg(Color::Yellow))
+                .scroll((0, tcr_scroll as u16))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" TCR (ppm/K) "),
+                );
+            frame.render_widget(tcr_paragraph, tcr_rect);
+
+            // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
+            let (rect, input, scroll) = match model.specs_to_color.focus {
+                InputFocus::Resistance => (
+                    resistance_rect,
+                    &model.specs_to_color.resistance_input,
+                    resistance_scroll,
+                ),
+                InputFocus::Tolerance => (
+                    tolerance_rect,
+                    &model.specs_to_color.tolerance_input,
+                    tolerance_scroll,
+                ),
+                InputFocus::Tcr => (tcr_rect, &model.specs_to_color.tcr_input, tcr_scroll),
+            };
+            frame.set_cursor_position((
+                // Put cursor past the end of the input text
+                rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
+                // Move one line down, from the border to the input line
+                rect.y + 1,
+            ));
+
+            if let Some(resistor) = &model.specs_to_color.resistor {
+                let colors = resistor
+                    .bands()
+                    .iter()
+                    .map(|c| rusistor_color_to_ratatui_color(c))
+                    .collect::<Vec<(Color, String)>>();
+                let specs = resistor.specs();
+                let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
+                frame.render_widget(chart, main_rect);
+            }
+            if let Some(e) = &model.specs_to_color.error {
+                let text = Text::from(e.to_string());
+                let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
+                frame.render_widget(error_message, main_rect);
+            }
+        }
+    }
+}
+
+pub enum ColorCodesMsg {
+    ThreeBands,
+    FourBands,
+    FiveBands,
+    SixBands,
+    NextBand,
+    PrevBand,
+    NextColor,
+    PrevColor,
+}
+
+pub enum SpecsMsg {
     Determine,
-    FocusNext,
+    NextSpecInput,
+    PrevSpecInput,
+}
+
+pub enum Msg {
+    ToggleTab,
     Exit,
-    FocusPrevious,
+    SpecsMsg { msg: SpecsMsg },
+    ColorCodesMsg { msg: ColorCodesMsg },
 }
 
 pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
@@ -201,16 +506,47 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 }
 
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
-    match key.code {
-        KeyCode::Enter => Some(Msg::Determine),
-        KeyCode::Tab => Some(Msg::FocusNext),
-        KeyCode::BackTab => Some(Msg::FocusPrevious),
-        KeyCode::Esc => Some(Msg::Exit),
+    match (key.code, &model.selected_tab) {
+        (KeyCode::Right, _) | (KeyCode::Left, _) => Some(Msg::ToggleTab),
+        (KeyCode::Enter, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::Determine,
+        }),
+        (KeyCode::Tab, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::NextSpecInput,
+        }),
+        (KeyCode::Tab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextBand,
+        }),
+        (KeyCode::BackTab, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::PrevSpecInput,
+        }),
+        (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevBand,
+        }),
+        (KeyCode::Up, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevColor,
+        }),
+        (KeyCode::Down, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextColor,
+        }),
+        (KeyCode::Char('3'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::ThreeBands,
+        }),
+        (KeyCode::Char('4'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FourBands,
+        }),
+        (KeyCode::Char('5'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FiveBands,
+        }),
+        (KeyCode::Char('6'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::SixBands,
+        }),
+        (KeyCode::Esc, _) => Some(Msg::Exit),
         _ => {
-            let target_input = match model.focus {
-                InputFocus::Resistance => &mut model.resistance_input,
-                InputFocus::Tolerance => &mut model.tolerance_input,
-                InputFocus::Tcr => &mut model.tcr_input,
+            let target_input = match model.specs_to_color.focus {
+                InputFocus::Resistance => &mut model.specs_to_color.resistance_input,
+                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input,
+                InputFocus::Tcr => &mut model.specs_to_color.tcr_input,
             };
             target_input.handle_event(&Event::Key(key));
             None
@@ -220,30 +556,38 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
 
 pub fn update(model: &mut Model, msg: Msg) {
     match msg {
-        Msg::Determine => {
+        Msg::ToggleTab => model.selected_tab = model.selected_tab.toggle(),
+        Msg::SpecsMsg {
+            msg: SpecsMsg::Determine,
+        } => {
             match try_determine_resistor(
-                model.resistance_input.value(),
-                model.tolerance_input.value(),
-                model.tcr_input.value(),
+                model.specs_to_color.resistance_input.value(),
+                model.specs_to_color.tolerance_input.value(),
+                model.specs_to_color.tcr_input.value(),
             ) {
                 Ok(resistor) => {
-                    model.resistor = Some(resistor);
-                    model.error = None;
+                    model.specs_to_color.resistor = Some(resistor);
+                    model.specs_to_color.error = None;
                 }
                 Err(e) => {
-                    model.resistor = None;
-                    model.error = Some(e);
+                    model.specs_to_color.resistor = None;
+                    model.specs_to_color.error = Some(e);
                 }
             }
-            model.resistance_input.reset();
-            model.tolerance_input.reset();
-            model.tcr_input.reset();
-            model.focus = InputFocus::Resistance;
+            model.specs_to_color.resistance_input.reset();
+            model.specs_to_color.tolerance_input.reset();
+            model.specs_to_color.tcr_input.reset();
+            model.specs_to_color.focus = InputFocus::Resistance;
         }
-        Msg::FocusNext | Msg::FocusPrevious => {
-            model.error = match model.focus {
+        Msg::SpecsMsg {
+            msg: SpecsMsg::NextSpecInput,
+        }
+        | Msg::SpecsMsg {
+            msg: SpecsMsg::PrevSpecInput,
+        } => {
+            model.specs_to_color.error = match model.specs_to_color.focus {
                 InputFocus::Resistance => {
-                    let value = model.resistance_input.value();
+                    let value = model.specs_to_color.resistance_input.value();
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -251,7 +595,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                     }
                 }
                 InputFocus::Tolerance => {
-                    let value = model.tolerance_input.value();
+                    let value = model.specs_to_color.tolerance_input.value();
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -259,7 +603,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                     }
                 }
                 InputFocus::Tcr => {
-                    let value = model.tcr_input.value();
+                    let value = model.specs_to_color.tcr_input.value();
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -267,17 +611,122 @@ pub fn update(model: &mut Model, msg: Msg) {
                     }
                 }
             };
-            if model.error.is_none() {
-                model.focus = match msg {
-                    Msg::FocusNext => model.focus.next(),
-                    _ => model.focus.prev(),
+            if model.specs_to_color.error.is_none() {
+                model.specs_to_color.focus = match msg {
+                    Msg::SpecsMsg {
+                        msg: SpecsMsg::NextSpecInput,
+                    } => model.specs_to_color.focus.next(),
+                    _ => model.specs_to_color.focus.prev(),
                 };
             } else {
-                model.resistor = None;
+                model.specs_to_color.resistor = None;
             }
         }
         Msg::Exit => {
             model.running = false;
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::ThreeBands,
+        } => {
+            model.color_codes_to_specs.resistor = Resistor::ThreeBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(2)
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FourBands,
+        } => {
+            model.color_codes_to_specs.resistor = Resistor::FourBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Brown,
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(3)
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::FiveBands,
+        } => {
+            model.color_codes_to_specs.resistor = Resistor::FiveBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(4)
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::SixBands,
+        } => {
+            model.color_codes_to_specs.resistor = Resistor::SixBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+                band6: rusistor::Color::Black,
+            };
+            model.color_codes_to_specs.selected_band =
+                model.color_codes_to_specs.selected_band.min(5)
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextBand,
+        } => {
+            model.color_codes_to_specs.selected_band = (model.color_codes_to_specs.selected_band
+                + 1)
+                % model.color_codes_to_specs.resistor.bands().len()
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevBand,
+        } => {
+            let bands_count = model.color_codes_to_specs.resistor.bands().len();
+            model.color_codes_to_specs.selected_band =
+                (model.color_codes_to_specs.selected_band + (bands_count - 1)) % bands_count
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextColor,
+        } => {
+            let current_idx = color_to_index(
+                model.color_codes_to_specs.resistor.bands()
+                    [model.color_codes_to_specs.selected_band],
+            );
+
+            let mut i: usize = 0;
+            let mut resistor = Err("".to_string());
+            while resistor.is_err() {
+                i += 1;
+                let next_color = index_to_color((current_idx + i) % 13);
+                resistor = model
+                    .color_codes_to_specs
+                    .resistor
+                    .with_color(next_color, model.color_codes_to_specs.selected_band);
+            }
+            model.color_codes_to_specs.resistor = resistor.unwrap();
+        }
+        Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevColor,
+        } => {
+            let current_idx = color_to_index(
+                model.color_codes_to_specs.resistor.bands()
+                    [model.color_codes_to_specs.selected_band],
+            );
+            let mut i: usize = 13;
+            let mut resistor = Err("".to_string());
+            while resistor.is_err() {
+                i -= 1;
+                let next_color = index_to_color((current_idx + i) % 13);
+                resistor = model
+                    .color_codes_to_specs
+                    .resistor
+                    .with_color(next_color, model.color_codes_to_specs.selected_band);
+            }
+            model.color_codes_to_specs.resistor = resistor.unwrap();
         }
     }
 }
@@ -376,18 +825,58 @@ fn bar_style(color: &Color) -> Style {
 
 fn rusistor_color_to_ratatui_color(color: &rusistor::Color) -> (Color, String) {
     match color {
-        rusistor::Color::Black => (Color::Black, String::from("black")),
-        rusistor::Color::Brown => (Color::Rgb(165, 42, 42), String::from("brown")),
-        rusistor::Color::Red => (Color::Red, String::from("red")),
-        rusistor::Color::Orange => (Color::Rgb(255, 165, 0), String::from("organge")),
-        rusistor::Color::Yellow => (Color::Yellow, String::from("yellow")),
-        rusistor::Color::Green => (Color::Green, String::from("green")),
-        rusistor::Color::Blue => (Color::Blue, String::from("blue")),
-        rusistor::Color::Violet => (Color::Rgb(148, 0, 211), String::from("violet")),
-        rusistor::Color::Grey => (Color::Gray, String::from("grey")),
-        rusistor::Color::White => (Color::White, String::from("white")),
-        rusistor::Color::Gold => (Color::Rgb(255, 215, 0), String::from("gold")),
-        rusistor::Color::Silver => (Color::Rgb(192, 192, 192), String::from("silver")),
-        rusistor::Color::Pink => (Color::Rgb(255, 105, 180), String::from("pink")),
+        rusistor::Color::Black => (Color::Black, rusistor::Color::Black.to_string()),
+        rusistor::Color::Brown => (Color::Rgb(165, 42, 42), rusistor::Color::Brown.to_string()),
+        rusistor::Color::Red => (Color::Red, rusistor::Color::Red.to_string()),
+        rusistor::Color::Orange => (Color::Rgb(255, 165, 0), rusistor::Color::Orange.to_string()),
+        rusistor::Color::Yellow => (Color::Yellow, rusistor::Color::Yellow.to_string()),
+        rusistor::Color::Green => (Color::Green, rusistor::Color::Green.to_string()),
+        rusistor::Color::Blue => (Color::Blue, rusistor::Color::Blue.to_string()),
+        rusistor::Color::Violet => (Color::Rgb(148, 0, 211), rusistor::Color::Violet.to_string()),
+        rusistor::Color::Grey => (Color::Gray, rusistor::Color::Grey.to_string()),
+        rusistor::Color::White => (Color::White, rusistor::Color::White.to_string()),
+        rusistor::Color::Gold => (Color::Rgb(255, 215, 0), rusistor::Color::Gold.to_string()),
+        rusistor::Color::Silver => (
+            Color::Rgb(192, 192, 192),
+            rusistor::Color::Silver.to_string(),
+        ),
+        rusistor::Color::Pink => (Color::Rgb(255, 105, 180), rusistor::Color::Pink.to_string()),
+    }
+}
+
+fn index_to_color(idx: usize) -> rusistor::Color {
+    match idx {
+        0 => rusistor::Color::Black,
+        1 => rusistor::Color::Brown,
+        2 => rusistor::Color::Red,
+        3 => rusistor::Color::Orange,
+        4 => rusistor::Color::Yellow,
+        5 => rusistor::Color::Green,
+        6 => rusistor::Color::Blue,
+        7 => rusistor::Color::Violet,
+        8 => rusistor::Color::Grey,
+        9 => rusistor::Color::White,
+        10 => rusistor::Color::Gold,
+        11 => rusistor::Color::Silver,
+        12 => rusistor::Color::Pink,
+        _ => panic!("unknown color"),
+    }
+}
+
+fn color_to_index(color: &rusistor::Color) -> usize {
+    match color {
+        rusistor::Color::Black => 0,
+        rusistor::Color::Brown => 1,
+        rusistor::Color::Red => 2,
+        rusistor::Color::Orange => 3,
+        rusistor::Color::Yellow => 4,
+        rusistor::Color::Green => 5,
+        rusistor::Color::Blue => 6,
+        rusistor::Color::Violet => 7,
+        rusistor::Color::Grey => 8,
+        rusistor::Color::White => 9,
+        rusistor::Color::Gold => 10,
+        rusistor::Color::Silver => 11,
+        rusistor::Color::Pink => 12,
     }
 }

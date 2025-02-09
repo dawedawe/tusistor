@@ -142,10 +142,18 @@ fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
     .map(|color| {
         let numeric_info = match (bands, band_idx) {
             (3, i) | (4, i) if i <= 1 => {
-                color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                if i == 0 && *color == rusistor::Color::Black {
+                    " ".to_string()
+                } else {
+                    color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                }
             }
             (5, i) | (6, i) if i <= 2 => {
-                color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                if i == 0 && *color == rusistor::Color::Black {
+                    " ".to_string()
+                } else {
+                    color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                }
             }
             (3, 2) | (4, 2) | (5, 3) | (6, 3) => {
                 format!("10^{}", color.as_digit_or_exponent())

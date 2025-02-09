@@ -2,7 +2,7 @@ use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style},
     text::{Line, Span, Text},
     widgets::{
         Bar, BarChart, BarGroup, Block, Borders, List, ListDirection, ListItem, ListState,
@@ -144,9 +144,14 @@ where
     .iter()
     .map(|color| {
         let numeric_info = f(color);
-        let (c, name) = rusistor_color_to_ratatui_color(color);
+        let (color, name) = rusistor_color_to_ratatui_color(color);
         let s = format!("{name} {numeric_info}");
-        ListItem::new(s).bg(c)
+        let style = if color == Color::Black {
+            Style::default().bg(color)
+        } else {
+            Style::default().bg(color).fg(Color::Black)
+        };
+        ListItem::new(s).style(style)
     });
 
     let style = if is_focused {

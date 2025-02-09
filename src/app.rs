@@ -182,7 +182,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                         Constraint::Length(2),
                         Constraint::Max(3),
                         Constraint::Max(3),
-                        Constraint::Max(15),
+                        Constraint::Length(15),
                         Constraint::Min(1),
                     ]
                     .as_ref(),

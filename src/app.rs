@@ -143,7 +143,9 @@ fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
         let numeric_info = match (bands, band_idx) {
             (3, i) | (4, i) if i <= 1 => color.as_digit().map_or("".to_string(), |s| s.to_string()),
             (5, i) | (6, i) if i <= 2 => color.as_digit().map_or("".to_string(), |s| s.to_string()),
-            (3, 2) | (4, 2) | (5, 3) | (6, 3) => color.as_digit_or_exponent().to_string(),
+            (3, 2) | (4, 2) | (5, 3) | (6, 3) => {
+                format!("10^{}", color.as_digit_or_exponent())
+            }
             (4, 3) | (5, 4) | (6, 4) => color
                 .as_tolerance()
                 .map_or("".to_string(), |s| (s * 100.0).to_string()),
@@ -166,10 +168,19 @@ fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
         Style::default()
     };
 
+    let semantic_info = match (bands, band_idx) {
+        (3, i) | (4, i) if i <= 1 => format!("Digit {}", band_idx + 1),
+        (5, i) | (6, i) if i <= 2 => format!("Digit {}", band_idx + 1),
+        (3, 2) | (4, 2) | (5, 3) | (6, 3) => "Multiplier".to_string(),
+        (4, 3) | (5, 4) | (6, 4) => "Tolerance".to_string(),
+        (6, 5) => "TCR".to_string(),
+        _ => "".to_string(),
+    };
+
     List::new(items)
         .block(
             Block::bordered()
-                .title(format!(" Band {} ", band_idx + 1))
+                .title(format!(" Band {}: {} ", band_idx + 1, semantic_info))
                 .style(style),
         )
         .highlight_symbol(">> ")
@@ -186,8 +197,8 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .constraints(
                     [
                         Constraint::Length(2),
-                        Constraint::Max(3),
-                        Constraint::Max(3),
+                        Constraint::Length(3),
+                        Constraint::Length(3),
                         Constraint::Length(15),
                         Constraint::Min(1),
                     ]
@@ -232,7 +243,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title(" Resistance(Ω) "),
+                        .title(" Resistance (Ω) "),
                 );
             frame.render_widget(resistance_paragraph, spec_chuncks[0]);
 
@@ -241,24 +252,36 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
-                        .title(" Tolerance(%) "),
+                        .title(" Tolerance (%) "),
                 );
             frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
 
             let min_paragraph = Paragraph::new(specs.min_ohm.to_string())
                 .style(Style::default().fg(Color::Yellow))
-                .block(Block::default().borders(Borders::ALL).title(" Minimum(Ω) "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Minimum (Ω) "),
+                );
             frame.render_widget(min_paragraph, spec_chuncks[2]);
 
             let max_paragraph = Paragraph::new(specs.max_ohm.to_string())
                 .style(Style::default().fg(Color::Yellow))
-                .block(Block::default().borders(Borders::ALL).title(" Maximum(Ω) "));
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Maximum (Ω) "),
+                );
             frame.render_widget(max_paragraph, spec_chuncks[3]);
 
             let tcr_paragraph =
                 Paragraph::new(specs.tcr.map(|f| f.to_string()).unwrap_or_default())
                     .style(Style::default().fg(Color::Yellow))
-                    .block(Block::default().borders(Borders::ALL).title(" TCR(ppm/K) "));
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .title(" TCR (ppm/K) "),
+                    );
             frame.render_widget(tcr_paragraph, spec_chuncks[4]);
 
             let (msg, style) = (

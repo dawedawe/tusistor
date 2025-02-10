@@ -1,8 +1,9 @@
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Modifier, Style},
+    symbols,
     text::{Line, Span, Text},
     widgets::{
         Bar, BarChart, BarGroup, Block, Borders, List, ListDirection, ListItem, ListState,
@@ -119,6 +120,7 @@ impl Default for Model {
 fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
     Tabs::new(vec![" color codes to specs ", " specs to color codes "])
         .padding(" ", " ")
+        .divider(symbols::DOT)
         .select(selected)
 }
 
@@ -208,6 +210,15 @@ fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
 }
 
 pub fn view(model: &Model, frame: &mut Frame) {
+    fn center_horizontal(area: Rect, width: u16) -> Rect {
+        let [area] = Layout::horizontal([Constraint::Length(width)])
+            .flex(Flex::Center)
+            .areas(area);
+        area
+    }
+
+    let tabs_width = 49;
+
     match model.selected_tab {
         SelectedTab::ColorCodesToSpecs => {
             let chunks = Layout::default()
@@ -223,8 +234,8 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     .as_ref(),
                 )
                 .split(frame.area());
-            let tabs_rect = chunks[0];
-            let help_msg_rect = chunks[3];
+            let tabs_rect = center_horizontal(chunks[0], tabs_width);
+            let help_msg_rect = center_horizontal(chunks[3], 89);
 
             let spec_chuncks = Layout::default()
                 .direction(Direction::Horizontal)
@@ -360,8 +371,8 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 ])
                 .split(chunks[2]);
 
-            let tabs_rect = chunks[0];
-            let help_msg_rect = chunks[3];
+            let tabs_rect = center_horizontal(chunks[0], tabs_width);
+            let help_msg_rect = center_horizontal(chunks[3], 76);
             let resistance_rect = input_rects[0];
             let tolerance_rect = input_rects[1];
             let tcr_rect = input_rects[2];

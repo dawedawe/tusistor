@@ -818,8 +818,12 @@ impl Resistor {
                 s.truncate(s.len() - 1);
             }
 
-            let digits: Vec<u32> = s.chars().map(|c| c.to_digit(10).unwrap()).collect();
-            Ok((digits, exponent))
+            if (-3..=9).contains(&exponent) {
+                let digits: Vec<u32> = s.chars().map(|c| c.to_digit(10).unwrap()).collect();
+                Ok((digits, exponent))
+            } else {
+                Result::Err(String::from("not a valid resistance value"))
+            }
         }
     }
 

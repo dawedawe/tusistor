@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
@@ -602,7 +604,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                     if value.trim().is_empty() {
                         None
                     } else {
-                        value.parse::<f64>().err().map(|err| err.to_string())
+                        try_parse_resistance(value).err().map(|err| err.to_string())
                     }
                 }
                 InputFocus::Tolerance => {
@@ -742,16 +744,26 @@ pub fn update(model: &mut Model, msg: Msg) {
     }
 }
 
+fn try_parse_resistance(input: &str) -> Result<f64, String> {
+    match input.parse::<f64>() {
+        Ok(t) => Ok(t),
+        Err(e) => match engineering_repr::EngineeringQuantity::<i64>::from_str(input) {
+            Ok(t) => {
+                let r: i64 = t.into();
+                let r = r as f64;
+                Ok(r)
+            }
+            Err(_) => Err(format!("invalid input for resistance: {}", e)),
+        },
+    }
+}
+
 fn try_determine_resistor(
     resistance_input: &str,
     tolerance_input: &str,
     tcr_input: &str,
 ) -> Result<Resistor, String> {
-    let resistance = match resistance_input.parse::<f64>() {
-        Ok(t) => Ok(t),
-        Err(e) => Err(format!("invalid input for resistance: {}", e)),
-    };
-
+    let resistance = try_parse_resistance(resistance_input);
     let tolerance = if tolerance_input.is_empty() {
         Ok(None)
     } else {

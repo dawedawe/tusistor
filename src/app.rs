@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use color_eyre::Result;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
     layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -237,7 +237,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 )
                 .split(frame.area());
             let tabs_rect = center_horizontal(chunks[0], tabs_width);
-            let help_msg_rect = center_horizontal(chunks[3], 89);
+            let help_msg_rect = center_horizontal(chunks[3], 95);
 
             let spec_chuncks = Layout::default()
                 .direction(Direction::Horizontal)
@@ -322,7 +322,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Span::raw(": prev/next color, "),
                     Span::styled("3|4|5|6", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": bands count, "),
-                    Span::styled("←/→", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("Shift ←/→", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": prev/next tab, "),
                     Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": exit"),
@@ -374,7 +374,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .split(chunks[2]);
 
             let tabs_rect = center_horizontal(chunks[0], tabs_width);
-            let help_msg_rect = center_horizontal(chunks[3], 76);
+            let help_msg_rect = center_horizontal(chunks[3], 82);
             let resistance_rect = input_rects[0];
             let tolerance_rect = input_rects[1];
             let tcr_rect = input_rects[2];
@@ -389,7 +389,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Span::raw(": next input, "),
                     Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": calculate color codes, "),
-                    Span::styled("←/→", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::styled("Shift ←/→", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": prev/next tab, "),
                     Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": exit"),
@@ -520,7 +520,9 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
     match (key.code, &model.selected_tab) {
-        (KeyCode::Right, _) | (KeyCode::Left, _) => Some(Msg::ToggleTab),
+        (KeyCode::Left, _) | (KeyCode::Right, _) if key.modifiers == KeyModifiers::SHIFT => {
+            Some(Msg::ToggleTab)
+        }
         (KeyCode::Enter, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::Determine,
         }),

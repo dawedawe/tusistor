@@ -43,7 +43,7 @@ impl InputFocus {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub enum SelectedTab {
     #[default]
     ColorCodesToSpecs,
@@ -903,5 +903,66 @@ fn color_to_index(color: &rusistor::Color) -> usize {
         rusistor::Color::Gold => 10,
         rusistor::Color::Silver => 11,
         rusistor::Color::Pink => 12,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::app::ColorCodesMsg;
+
+    use super::{Model, Msg, SelectedTab};
+
+    #[test]
+    fn test_exit_msg() {
+        let mut model = Model::default();
+        super::update(&mut model, Msg::Exit);
+        assert!(!model.running)
+    }
+
+    #[test]
+    fn test_toggletab_msg() {
+        let mut model = Model::default();
+        super::update(&mut model, Msg::ToggleTab);
+        assert_eq!(model.selected_tab, SelectedTab::SpecsToColorCodes);
+        super::update(&mut model, Msg::ToggleTab);
+        assert_eq!(model.selected_tab, SelectedTab::ColorCodesToSpecs)
+    }
+
+    #[test]
+    fn test_nbands_msg() {
+        let mut model = Model::default();
+        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 6);
+
+        super::update(
+            &mut model,
+            Msg::ColorCodesMsg {
+                msg: ColorCodesMsg::ThreeBands,
+            },
+        );
+        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 3);
+
+        super::update(
+            &mut model,
+            Msg::ColorCodesMsg {
+                msg: ColorCodesMsg::FourBands,
+            },
+        );
+        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 4);
+
+        super::update(
+            &mut model,
+            Msg::ColorCodesMsg {
+                msg: ColorCodesMsg::FiveBands,
+            },
+        );
+        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 5);
+
+        super::update(
+            &mut model,
+            Msg::ColorCodesMsg {
+                msg: ColorCodesMsg::SixBands,
+            },
+        );
+        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 6);
     }
 }

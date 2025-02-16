@@ -126,6 +126,35 @@ pub mod view {
             .select(selected)
     }
 
+    fn band_numeric_info(bands: usize, band_idx: usize, color: &rusistor::Color) -> String {
+        match (bands, band_idx) {
+            (3, i) | (4, i) if i <= 1 => {
+                if i == 0 && *color == rusistor::Color::Black {
+                    " ".to_string()
+                } else {
+                    color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                }
+            }
+            (5, i) | (6, i) if i <= 2 => {
+                if i == 0 && *color == rusistor::Color::Black {
+                    " ".to_string()
+                } else {
+                    color.as_digit().map_or(" ".to_string(), |s| s.to_string())
+                }
+            }
+            (3, 2) | (4, 2) | (5, 3) | (6, 3) => {
+                format!("10^{}", color.as_digit_or_exponent())
+            }
+            (4, 3) | (5, 4) | (6, 4) => color
+                .as_tolerance()
+                .map_or("    ".to_string(), |s| format!("{:>4}", (s * 100.0))),
+            (6, 5) => color
+                .as_tcr()
+                .map_or("   ".to_string(), |s| format!("{:>3}", s.to_string())),
+            _ => "".to_string(),
+        }
+    }
+
     fn band_semantic_info(bands: usize, band_idx: usize) -> String {
         match (bands, band_idx) {
             (3, i) | (4, i) if i <= 1 => format!("Digit {}", band_idx + 1),
@@ -155,34 +184,9 @@ pub mod view {
         ]
         .iter()
         .map(|color| {
-            let band_numeric_info = match (bands, band_idx) {
-                (3, i) | (4, i) if i <= 1 => {
-                    if i == 0 && *color == rusistor::Color::Black {
-                        " ".to_string()
-                    } else {
-                        color.as_digit().map_or(" ".to_string(), |s| s.to_string())
-                    }
-                }
-                (5, i) | (6, i) if i <= 2 => {
-                    if i == 0 && *color == rusistor::Color::Black {
-                        " ".to_string()
-                    } else {
-                        color.as_digit().map_or(" ".to_string(), |s| s.to_string())
-                    }
-                }
-                (3, 2) | (4, 2) | (5, 3) | (6, 3) => {
-                    format!("10^{}", color.as_digit_or_exponent())
-                }
-                (4, 3) | (5, 4) | (6, 4) => color
-                    .as_tolerance()
-                    .map_or("    ".to_string(), |s| format!("{:>4}", (s * 100.0))),
-                (6, 5) => color
-                    .as_tcr()
-                    .map_or("   ".to_string(), |s| format!("{:>3}", s.to_string())),
-                _ => "".to_string(),
-            };
+            let numeric_info = band_numeric_info(bands, band_idx, color);
             let (color, name) = rusistor_color_to_ratatui_color(color);
-            let s = format!(" {band_numeric_info} {name}");
+            let s = format!(" {numeric_info} {name}");
             let style = if color == Color::Black {
                 Style::default().bg(color)
             } else {
@@ -479,10 +483,11 @@ pub mod view {
                         .enumerate()
                         .map(|(idx, c)| {
                             let sem_info = band_semantic_info(bands.len(), idx);
+                            let num_info = band_numeric_info(bands.len(), idx, c);
                             let (color, name) = rusistor_color_to_ratatui_color(c);
-                            (sem_info, color, name)
+                            (sem_info, num_info, color, name)
                         })
-                        .collect::<Vec<(String, Color, String)>>();
+                        .collect::<Vec<(String, String, Color, String)>>();
                     let specs = resistor.specs();
                     let chart = barchart(&band_infos, specs.ohm, specs.tolerance, specs.tcr);
                     frame.render_widget(chart, main_rect);
@@ -497,7 +502,7 @@ pub mod view {
     }
 
     fn barchart(
-        band_infos: &[(String, Color, String)],
+        band_infos: &[(String, String, Color, String)],
         ohm: f64,
         tolerance: f64,
         tcr: Option<u32>,
@@ -518,13 +523,13 @@ pub mod view {
         BarChart::default()
             .data(BarGroup::default().bars(&bars))
             .block(Block::new().title(title).borders(Borders::all()))
-            .bar_width(15)
+            .bar_width(21)
     }
 
-    fn bar((sem_info, color, name): &(String, Color, String)) -> Bar {
+    fn bar((sem_info, num_info, color, name): &(String, String, Color, String)) -> Bar {
         Bar::default()
             .value(100)
-            .text_value(format!(" {} ", sem_info))
+            .text_value(format!(" {}: {} ", sem_info, num_info.trim()))
             .value_style(Style::default().fg(Color::White).bg(Color::Black))
             .label(Line::from(name.as_str()))
             .style(bar_style(color))

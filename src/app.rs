@@ -126,6 +126,17 @@ pub mod view {
             .select(selected)
     }
 
+    fn band_semantic_info(bands: usize, band_idx: usize) -> String {
+        match (bands, band_idx) {
+            (3, i) | (4, i) if i <= 1 => format!("Digit {}", band_idx + 1),
+            (5, i) | (6, i) if i <= 2 => format!("Digit {}", band_idx + 1),
+            (3, 2) | (4, 2) | (5, 3) | (6, 3) => "Multiplier".to_string(),
+            (4, 3) | (5, 4) | (6, 4) => "Tolerance".to_string(),
+            (6, 5) => "TCR".to_string(),
+            _ => "".to_string(),
+        }
+    }
+
     fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
         let items = [
             rusistor::Color::Black,
@@ -144,7 +155,7 @@ pub mod view {
         ]
         .iter()
         .map(|color| {
-            let numeric_info = match (bands, band_idx) {
+            let band_numeric_info = match (bands, band_idx) {
                 (3, i) | (4, i) if i <= 1 => {
                     if i == 0 && *color == rusistor::Color::Black {
                         " ".to_string()
@@ -171,7 +182,7 @@ pub mod view {
                 _ => "".to_string(),
             };
             let (color, name) = rusistor_color_to_ratatui_color(color);
-            let s = format!(" {numeric_info} {name}");
+            let s = format!(" {band_numeric_info} {name}");
             let style = if color == Color::Black {
                 Style::default().bg(color)
             } else {
@@ -186,14 +197,7 @@ pub mod view {
             Style::default()
         };
 
-        let semantic_info = match (bands, band_idx) {
-            (3, i) | (4, i) if i <= 1 => format!("Digit {}", band_idx + 1),
-            (5, i) | (6, i) if i <= 2 => format!("Digit {}", band_idx + 1),
-            (3, 2) | (4, 2) | (5, 3) | (6, 3) => "Multiplier".to_string(),
-            (4, 3) | (5, 4) | (6, 4) => "Tolerance".to_string(),
-            (6, 5) => "TCR".to_string(),
-            _ => "".to_string(),
-        };
+        let semantic_info = band_semantic_info(bands, band_idx);
 
         List::new(items)
             .block(
@@ -469,13 +473,18 @@ pub mod view {
                 ));
 
                 if let Some(resistor) = &model.specs_to_color.resistor {
-                    let colors = resistor
-                        .bands()
+                    let bands = resistor.bands();
+                    let band_infos = bands
                         .iter()
-                        .map(|c| rusistor_color_to_ratatui_color(c))
-                        .collect::<Vec<(Color, String)>>();
+                        .enumerate()
+                        .map(|(idx, c)| {
+                            let sem_info = band_semantic_info(bands.len(), idx);
+                            let (color, name) = rusistor_color_to_ratatui_color(c);
+                            (sem_info, color, name)
+                        })
+                        .collect::<Vec<(String, Color, String)>>();
                     let specs = resistor.specs();
-                    let chart = barchart(&colors, specs.ohm, specs.tolerance, specs.tcr);
+                    let chart = barchart(&band_infos, specs.ohm, specs.tolerance, specs.tcr);
                     frame.render_widget(chart, main_rect);
                 }
                 if let Some(e) = &model.specs_to_color.error {
@@ -487,8 +496,13 @@ pub mod view {
         }
     }
 
-    fn barchart(bands: &[(Color, String)], ohm: f64, tolerance: f64, tcr: Option<u32>) -> BarChart {
-        let bars: Vec<Bar> = bands.iter().map(|color| bar(color)).collect();
+    fn barchart(
+        band_infos: &[(String, Color, String)],
+        ohm: f64,
+        tolerance: f64,
+        tcr: Option<u32>,
+    ) -> BarChart {
+        let bars: Vec<Bar> = band_infos.iter().map(|i| bar(i)).collect();
         let tcr = if let Some(tcr) = tcr {
             format!(" - TCR: {}(ppm/K)", tcr)
         } else {
@@ -504,13 +518,14 @@ pub mod view {
         BarChart::default()
             .data(BarGroup::default().bars(&bars))
             .block(Block::new().title(title).borders(Borders::all()))
-            .bar_width(10)
+            .bar_width(15)
     }
 
-    fn bar((color, name): &(Color, String)) -> Bar {
+    fn bar((sem_info, color, name): &(String, Color, String)) -> Bar {
         Bar::default()
             .value(100)
-            .text_value("".to_string())
+            .text_value(format!(" {} ", sem_info))
+            .value_style(Style::default().fg(Color::White).bg(Color::Black))
             .label(Line::from(name.as_str()))
             .style(bar_style(color))
     }

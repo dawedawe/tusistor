@@ -4,21 +4,21 @@ use std::{
     fmt::{self, Display, Formatter},
 };
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Color {
-    Black,
-    Brown,
-    Red,
-    Orange,
-    Yellow,
-    Green,
-    Blue,
-    Violet,
-    Grey,
-    White,
-    Gold,
-    Silver,
-    Pink,
+    Black = 0,
+    Brown = 1,
+    Red = 2,
+    Orange = 3,
+    Yellow = 4,
+    Green = 5,
+    Blue = 6,
+    Violet = 7,
+    Grey = 8,
+    White = 9,
+    Gold = 10,
+    Silver = 11,
+    Pink = 12,
 }
 
 impl Color {
@@ -524,28 +524,12 @@ impl Resistor {
 
     pub fn try_create(bands: Vec<Color>) -> Result<Resistor, String> {
         match bands.len() {
-            1 => Resistor::try_create_1_band(bands[0].clone()),
-            3 => Resistor::try_create_3_band(bands[0].clone(), bands[1].clone(), bands[2].clone()),
-            4 => Resistor::try_create_4_band(
-                bands[0].clone(),
-                bands[1].clone(),
-                bands[2].clone(),
-                bands[3].clone(),
-            ),
-            5 => Resistor::try_create_5_band(
-                bands[0].clone(),
-                bands[1].clone(),
-                bands[2].clone(),
-                bands[3].clone(),
-                bands[4].clone(),
-            ),
+            1 => Resistor::try_create_1_band(bands[0]),
+            3 => Resistor::try_create_3_band(bands[0], bands[1], bands[2]),
+            4 => Resistor::try_create_4_band(bands[0], bands[1], bands[2], bands[3]),
+            5 => Resistor::try_create_5_band(bands[0], bands[1], bands[2], bands[3], bands[4]),
             6 => Resistor::try_create_6_band(
-                bands[0].clone(),
-                bands[1].clone(),
-                bands[2].clone(),
-                bands[3].clone(),
-                bands[4].clone(),
-                bands[5].clone(),
+                bands[0], bands[1], bands[2], bands[3], bands[4], bands[5],
             ),
             _ => Err(String::from("This is not a valid transistor configuration")),
         }

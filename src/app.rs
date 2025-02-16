@@ -1,21 +1,3 @@
-fn color_to_index(color: &rusistor::Color) -> usize {
-    match color {
-        rusistor::Color::Black => 0,
-        rusistor::Color::Brown => 1,
-        rusistor::Color::Red => 2,
-        rusistor::Color::Orange => 3,
-        rusistor::Color::Yellow => 4,
-        rusistor::Color::Green => 5,
-        rusistor::Color::Blue => 6,
-        rusistor::Color::Violet => 7,
-        rusistor::Color::Grey => 8,
-        rusistor::Color::White => 9,
-        rusistor::Color::Gold => 10,
-        rusistor::Color::Silver => 11,
-        rusistor::Color::Pink => 12,
-    }
-}
-
 pub mod model {
     use rusistor::Resistor;
     use tui_input::Input;
@@ -124,7 +106,6 @@ pub mod model {
 }
 
 pub mod view {
-    use crate::app::color_to_index;
     use crate::app::model::{InputFocus, Model, SelectedTab};
     use ratatui::{
         layout::{Constraint, Direction, Flex, Layout, Rect},
@@ -354,8 +335,7 @@ pub mod view {
 
                 let bands = model.color_codes_to_specs.resistor.bands();
                 for i in 0..bands.len() {
-                    let mut state =
-                        ListState::default().with_selected(Some(color_to_index(bands[i])));
+                    let mut state = ListState::default().with_selected(Some(*bands[i] as usize));
                     let is_focused = model.color_codes_to_specs.selected_band == i;
                     let list = band_list(i, bands.len(), is_focused);
                     frame.render_stateful_widget(list, bands_rect[i], &mut state);
@@ -566,7 +546,6 @@ pub mod view {
 }
 
 pub mod update {
-    use crate::app::color_to_index;
     use crate::app::model::{InputFocus, Model, SelectedTab};
     use color_eyre::Result;
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -797,11 +776,9 @@ pub mod update {
             Msg::ColorCodesMsg {
                 msg: ColorCodesMsg::NextColor,
             } => {
-                let current_idx = color_to_index(
-                    model.color_codes_to_specs.resistor.bands()
-                        [model.color_codes_to_specs.selected_band],
-                );
-
+                let current_idx: usize = *model.color_codes_to_specs.resistor.bands()
+                    [model.color_codes_to_specs.selected_band]
+                    as usize;
                 let mut i: usize = 0;
                 let mut resistor = Err("".to_string());
                 while resistor.is_err() {
@@ -817,10 +794,9 @@ pub mod update {
             Msg::ColorCodesMsg {
                 msg: ColorCodesMsg::PrevColor,
             } => {
-                let current_idx = color_to_index(
-                    model.color_codes_to_specs.resistor.bands()
-                        [model.color_codes_to_specs.selected_band],
-                );
+                let current_idx = *model.color_codes_to_specs.resistor.bands()
+                    [model.color_codes_to_specs.selected_band]
+                    as usize;
                 let mut i: usize = 13;
                 let mut resistor = Err("".to_string());
                 while resistor.is_err() {

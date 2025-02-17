@@ -114,7 +114,7 @@ pub mod view {
         text::{Line, Span, Text},
         widgets::{
             Bar, BarChart, BarGroup, Block, Borders, List, ListDirection, ListItem, ListState,
-            Paragraph, Tabs,
+            Padding, Paragraph, Tabs,
         },
         Frame,
     };
@@ -513,8 +513,14 @@ pub mod view {
         let title = Line::from(title).centered();
         BarChart::default()
             .data(BarGroup::default().bars(&bars))
-            .block(Block::new().title(title).borders(Borders::all()))
+            .block(
+                Block::new()
+                    .padding(Padding::new(1, 1, 1, 1))
+                    .title(title)
+                    .borders(Borders::all()),
+            )
             .bar_width(19)
+            .bar_gap(1)
     }
 
     fn bar((sem_info, num_info, color, name): &(String, String, Color, String)) -> Bar {

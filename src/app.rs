@@ -372,21 +372,12 @@ pub mod view {
                     ])
                     .split(chunks[1]);
 
-                let main_rects = Layout::default()
-                    .direction(Direction::Horizontal)
-                    .constraints([
-                        Constraint::Percentage(10),
-                        Constraint::Percentage(80),
-                        Constraint::Percentage(10),
-                    ])
-                    .split(chunks[2]);
-
                 let tabs_rect = center_horizontal(chunks[0], tabs_width);
                 let help_msg_rect = center_horizontal(chunks[3], 82);
                 let resistance_rect = input_rects[0];
                 let tolerance_rect = input_rects[1];
                 let tcr_rect = input_rects[2];
-                let main_rect = main_rects[1];
+                let main_rect = chunks[2];
 
                 let tabs = tabs(&model.selected_tab);
                 frame.render_widget(tabs, tabs_rect);
@@ -523,15 +514,15 @@ pub mod view {
         BarChart::default()
             .data(BarGroup::default().bars(&bars))
             .block(Block::new().title(title).borders(Borders::all()))
-            .bar_width(21)
+            .bar_width(19)
     }
 
     fn bar((sem_info, num_info, color, name): &(String, String, Color, String)) -> Bar {
         Bar::default()
             .value(100)
-            .text_value(format!(" {}: {} ", sem_info, num_info.trim()))
+            .text_value(format!(" {} ", name))
             .value_style(Style::default().fg(Color::White).bg(Color::Black))
-            .label(Line::from(name.as_str()))
+            .label(Line::from(format!("{}: {}", sem_info, num_info.trim())))
             .style(bar_style(color))
     }
 

@@ -108,6 +108,7 @@ pub mod model {
 pub mod view {
     use crate::app::model::{InputFocus, Model, SelectedTab};
     use ratatui::{
+        Frame,
         layout::{Constraint, Direction, Flex, Layout, Rect},
         style::{Color, Modifier, Style},
         symbols,
@@ -116,7 +117,6 @@ pub mod view {
             Bar, BarChart, BarGroup, Block, Borders, List, ListDirection, ListItem, ListState,
             Padding, Paragraph, Tabs,
         },
-        Frame,
     };
 
     fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
@@ -922,7 +922,7 @@ pub mod update {
 #[cfg(test)]
 mod tests {
     use super::model::{Model, SelectedTab};
-    use super::update::{update, ColorCodesMsg, Msg};
+    use super::update::{ColorCodesMsg, Msg, update};
 
     #[test]
     fn test_exit_msg() {

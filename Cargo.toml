@@ -3,7 +3,7 @@
 [workspace.package]
 authors = ["dawe <dawedawe@posteo.de>"]
 license = "MIT"
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/dawedawe/tusistor"
 
 [package]

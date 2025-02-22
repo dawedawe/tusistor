@@ -8,7 +8,7 @@ repository = "https://github.com/dawedawe/tusistor"
 
 [package]
 name = "tusistor"
-version = "0.5.0"
+version = "0.6.0"
 authors.workspace = true
 license.workspace = true
 edition.workspace = true

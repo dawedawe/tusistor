@@ -119,6 +119,8 @@ pub mod view {
         },
     };
 
+    const BAR_WIDTH: u16 = 19;
+
     fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
         Tabs::new(vec![" color codes to specs ", " specs to color codes "])
             .padding(" ", " ")
@@ -481,7 +483,15 @@ pub mod view {
                         .collect::<Vec<(String, String, Color, String)>>();
                     let specs = resistor.specs();
                     let chart = barchart(&band_infos, specs.ohm, specs.tolerance, specs.tcr);
-                    frame.render_widget(chart, main_rect);
+                    let chart_length: u16 = {
+                        let bands_len: u16 = bands.len() as u16;
+                        let bands_widths = bands_len * BAR_WIDTH;
+                        let bands_gaps = bands_len - 1;
+                        let border_plus_margin = 4;
+                        bands_widths + bands_gaps + border_plus_margin
+                    };
+                    let centered_main_rect = center_horizontal(main_rect, chart_length);
+                    frame.render_widget(chart, centered_main_rect);
                 }
                 if let Some(e) = &model.specs_to_color.error {
                     let text = Text::from(e.to_string());
@@ -519,7 +529,7 @@ pub mod view {
                     .title(title)
                     .borders(Borders::all()),
             )
-            .bar_width(19)
+            .bar_width(BAR_WIDTH)
             .bar_gap(1)
     }
 

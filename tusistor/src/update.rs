@@ -1,10 +1,10 @@
 use crate::model::{InputFocus, Model, SelectedTab};
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use rusistor::{self, Resistor};
+use rusistor::{Color, Resistor};
 use std::str::FromStr;
 use tui_input::backend::crossterm::EventHandler;
-use tusistor_core::update::{ColorCodesMsg, index_to_color};
+use tusistor_core::update::ColorCodesMsg;
 
 pub enum SpecsMsg {
     Determine,
@@ -153,9 +153,9 @@ pub fn update(model: &mut Model, msg: Msg) {
             msg: ColorCodesMsg::ThreeBands,
         } => {
             model.color_codes_to_specs.resistor = Resistor::ThreeBand {
-                band1: rusistor::Color::Brown,
-                band2: rusistor::Color::Black,
-                band3: rusistor::Color::Black,
+                band1: Color::Brown,
+                band2: Color::Black,
+                band3: Color::Black,
             };
             model.color_codes_to_specs.selected_band =
                 model.color_codes_to_specs.selected_band.min(2)
@@ -164,10 +164,10 @@ pub fn update(model: &mut Model, msg: Msg) {
             msg: ColorCodesMsg::FourBands,
         } => {
             model.color_codes_to_specs.resistor = Resistor::FourBand {
-                band1: rusistor::Color::Brown,
-                band2: rusistor::Color::Black,
-                band3: rusistor::Color::Black,
-                band4: rusistor::Color::Brown,
+                band1: Color::Brown,
+                band2: Color::Black,
+                band3: Color::Black,
+                band4: Color::Brown,
             };
             model.color_codes_to_specs.selected_band =
                 model.color_codes_to_specs.selected_band.min(3)
@@ -176,11 +176,11 @@ pub fn update(model: &mut Model, msg: Msg) {
             msg: ColorCodesMsg::FiveBands,
         } => {
             model.color_codes_to_specs.resistor = Resistor::FiveBand {
-                band1: rusistor::Color::Brown,
-                band2: rusistor::Color::Black,
-                band3: rusistor::Color::Black,
-                band4: rusistor::Color::Black,
-                band5: rusistor::Color::Brown,
+                band1: Color::Brown,
+                band2: Color::Black,
+                band3: Color::Black,
+                band4: Color::Black,
+                band5: Color::Brown,
             };
             model.color_codes_to_specs.selected_band =
                 model.color_codes_to_specs.selected_band.min(4)
@@ -189,12 +189,12 @@ pub fn update(model: &mut Model, msg: Msg) {
             msg: ColorCodesMsg::SixBands,
         } => {
             model.color_codes_to_specs.resistor = Resistor::SixBand {
-                band1: rusistor::Color::Brown,
-                band2: rusistor::Color::Black,
-                band3: rusistor::Color::Black,
-                band4: rusistor::Color::Black,
-                band5: rusistor::Color::Brown,
-                band6: rusistor::Color::Black,
+                band1: Color::Brown,
+                band2: Color::Black,
+                band3: Color::Black,
+                band4: Color::Black,
+                band5: Color::Brown,
+                band6: Color::Black,
             };
             model.color_codes_to_specs.selected_band =
                 model.color_codes_to_specs.selected_band.min(5)
@@ -223,7 +223,7 @@ pub fn update(model: &mut Model, msg: Msg) {
             let mut resistor = Err("".to_string());
             while resistor.is_err() {
                 i += 1;
-                let next_color = index_to_color((current_idx + i) % 13);
+                let next_color = Color::from((current_idx + i) % 13);
                 resistor = model
                     .color_codes_to_specs
                     .resistor
@@ -240,7 +240,7 @@ pub fn update(model: &mut Model, msg: Msg) {
             let mut resistor = Err("".to_string());
             while resistor.is_err() {
                 i -= 1;
-                let next_color = index_to_color((current_idx + i) % 13);
+                let next_color = Color::from((current_idx + i) % 13);
                 resistor = model
                     .color_codes_to_specs
                     .resistor

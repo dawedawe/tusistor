@@ -1,7 +1,7 @@
 use ratzilla::event;
-use rusistor::{self, Resistor};
+use rusistor::{self, Color, Resistor};
 use tusistor_core::model::ColorCodesToSpecsModel;
-use tusistor_core::update::{ColorCodesMsg, index_to_color};
+use tusistor_core::update::ColorCodesMsg;
 
 pub fn handle_event(model: &mut ColorCodesToSpecsModel, event: ratzilla::event::KeyEvent) {
     match event.code {
@@ -70,7 +70,7 @@ pub fn update(model: &mut ColorCodesToSpecsModel, msg: ColorCodesMsg) {
             let mut resistor = Err("".to_string());
             while resistor.is_err() {
                 i += 1;
-                let next_color = index_to_color((current_idx + i) % 13);
+                let next_color = Color::from((current_idx + i) % 13);
                 resistor = model.resistor.with_color(next_color, model.selected_band);
             }
             model.resistor = resistor.unwrap();
@@ -81,7 +81,7 @@ pub fn update(model: &mut ColorCodesToSpecsModel, msg: ColorCodesMsg) {
             let mut resistor = Err("".to_string());
             while resistor.is_err() {
                 i -= 1;
-                let next_color = index_to_color((current_idx + i) % 13);
+                let next_color = Color::from((current_idx + i) % 13);
                 resistor = model.resistor.with_color(next_color, model.selected_band);
             }
             model.resistor = resistor.unwrap();

@@ -147,6 +147,27 @@ impl From<i32> for Color {
     }
 }
 
+impl From<usize> for Color {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Color::Black,
+            1 => Color::Brown,
+            2 => Color::Red,
+            3 => Color::Orange,
+            4 => Color::Yellow,
+            5 => Color::Green,
+            6 => Color::Blue,
+            7 => Color::Violet,
+            8 => Color::Grey,
+            9 => Color::White,
+            10 => Color::Gold,
+            11 => Color::Silver,
+            12 => Color::Pink,
+            _ => panic!("invalid value {} given to Color::from", value),
+        }
+    }
+}
+
 impl Display for Color {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let s = match self {

@@ -1,4 +1,6 @@
 [workspace]
+members = ["rusistor", "tusistor", "tusistor-core", "tusistor-web" ]
+resolver = "2"
 
 [workspace.package]
 authors = ["dawe <dawedawe@posteo.de>"]
@@ -6,19 +8,3 @@ license = "MIT"
 edition = "2024"
 repository = "https://github.com/dawedawe/tusistor"
 
-[package]
-name = "tusistor"
-version = "0.6.0"
-authors.workspace = true
-license.workspace = true
-edition.workspace = true
-repository.workspace = true
-description = "This is a Ratatui app to calculate the color code of electrical resistors."
-
-[dependencies]
-crossterm = "0.28.1"
-ratatui = "0.29.0"
-color-eyre = "0.6.3"
-tui-input = "0.11.1"
-rusistor = { path = "rusistor", version = "0.3.0" }
-engineering-repr = "1.1.0"

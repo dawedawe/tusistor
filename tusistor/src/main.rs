@@ -1,9 +1,11 @@
-pub mod app;
+pub mod model;
+pub mod update;
+pub mod view;
 
-use app::model::Model;
-use app::update::{handle_event, update};
-use app::view::view;
 use color_eyre::eyre::Ok;
+use model::Model;
+use update::{handle_event, update};
+use view::view;
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;

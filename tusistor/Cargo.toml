@@ -1,0 +1,17 @@
+[package]
+name = "tusistor"
+version = "0.6.0"
+authors.workspace = true
+license.workspace = true
+edition.workspace = true
+repository.workspace = true
+description = "This is a Ratatui app to calculate the color code and specs of electrical resistors."
+
+[dependencies]
+crossterm = "0.28.1"
+ratatui = "0.29.0"
+color-eyre = "0.6.3"
+tui-input = "0.11.1"
+rusistor = { path = "../rusistor", version = "0.3.1" }
+tusistor-core = { path = "../tusistor-core", version = "0.1.0" }
+engineering-repr = "1.1.0"

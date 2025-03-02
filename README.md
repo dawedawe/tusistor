@@ -10,7 +10,10 @@ The input of tolerance and/or TCR are optional depending on your resistance inpu
 
 ![tusistor2.png](./tusistor2.png)
 
+A Wasm version built with [Ratzilla] is available here <https://www.function-type.com/tusistor/>
+
 [Ratatui]: https://ratatui.rs
+[Ratzilla]: https://orhun.dev/ratzilla/
 
 ## License
 

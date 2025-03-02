@@ -1,5 +1,5 @@
 [workspace]
-members = ["rusistor", "tusistor"]
+members = ["rusistor", "tusistor", "tusistor-core", "tusistor-web" ]
 resolver = "2"
 
 [workspace.package]

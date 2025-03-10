@@ -1,4 +1,4 @@
-use crate::model::{InputFocus, Model, SelectedTab};
+use crate::model::Model;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Flex, Layout, Rect},
@@ -10,7 +10,10 @@ use ratatui::{
         Paragraph, Tabs,
     },
 };
-use tusistor_core::view::{band_numeric_info, band_semantic_info};
+use tusistor_core::{
+    model::{InputFocus, SelectedTab},
+    view::{band_numeric_info, band_semantic_info},
+};
 
 const BAR_WIDTH: u16 = 19;
 
@@ -367,7 +370,7 @@ fn barchart(
         String::from("")
     };
     let title = format!(
-        "Resistance: {}Ω - Tolerance: ±{}%{}",
+        " Resistance: {}Ω - Tolerance: ±{}%{} ",
         ohm,
         tolerance * 100.0,
         tcr

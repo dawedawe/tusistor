@@ -1,9 +1,10 @@
-use crate::model::{InputFocus, Model, SelectedTab};
+use crate::model::Model;
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use rusistor::{Color, Resistor};
 use std::str::FromStr;
 use tui_input::backend::crossterm::EventHandler;
+use tusistor_core::model::{InputFocus, SelectedTab};
 use tusistor_core::update::ColorCodesMsg;
 
 pub enum SpecsMsg {
@@ -323,8 +324,10 @@ fn try_determine_resistor(
 
 #[cfg(test)]
 mod tests {
+    use tusistor_core::model::SelectedTab;
+
     use super::{ColorCodesMsg, Msg, update};
-    use crate::model::{Model, SelectedTab};
+    use crate::model::Model;
 
     #[test]
     fn test_exit_msg() {

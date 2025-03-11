@@ -240,8 +240,8 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
             let (msg, style) = (
                 vec![
-                    Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(": next input, "),
+                    Span::styled("Ctrl ←/→", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": prev/next input, "),
                     Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": calculate color codes, "),
                     Span::styled("Shift ←/→", Style::default().add_modifier(Modifier::BOLD)),

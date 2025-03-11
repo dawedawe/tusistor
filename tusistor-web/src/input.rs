@@ -38,7 +38,24 @@ impl WebInput {
 
     pub fn handle_event(&mut self, event: &ratzilla::event::KeyEvent) {
         match event.code {
-            KeyCode::Char(ch) if char::is_ascii(&ch) => self.value.push(ch),
+            KeyCode::Char(ch) if char::is_ascii(&ch) => {
+                self.value.push(ch);
+                self.cursor += 1
+            }
+            KeyCode::Left => self.cursor = self.cursor.saturating_sub(1),
+            KeyCode::Right => self.cursor = self.cursor.saturating_add(1).min(self.value.len()),
+            KeyCode::Delete => {
+                if self.value.len() > self.cursor {
+                    self.value.remove(self.cursor);
+                }
+            }
+            KeyCode::Backspace => {
+                let idx = self.cursor.saturating_sub(1);
+                if self.value.len() > idx {
+                    self.value.remove(idx);
+                }
+                self.cursor = self.cursor.saturating_sub(1);
+            }
             _ => (),
         }
     }

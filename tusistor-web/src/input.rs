@@ -2,7 +2,7 @@ use ratzilla::{
     event::KeyCode,
     ratatui::{
         layout::Rect,
-        widgets::{Block, Paragraph, Widget},
+        widgets::{Paragraph, Widget},
     },
 };
 
@@ -75,7 +75,7 @@ impl Widget for WebInput {
     where
         Self: Sized,
     {
-        let input = Paragraph::new(self.value).block(Block::bordered().title("Input"));
+        let input = Paragraph::new(self.value);
         input.render(area, buf);
     }
 }

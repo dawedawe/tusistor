@@ -87,6 +87,11 @@ pub fn view(model: &Model, frame: &mut Frame) {
         area
     }
 
+    fn create_title(current_focus: &InputFocus, input: InputFocus, title: &str) -> String {
+        let marker = if *current_focus == input { "*" } else { "" };
+        format!(" {}{} ", title, marker)
+    }
+
     let tabs_width = 49;
 
     match model.selected_tab {
@@ -260,15 +265,17 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .specs_to_color
                 .resistance_input
                 .visual_scroll(resistance_width as usize);
-            let resistance_paragraph =
+            let resistance_paragraph = {
+                let title = create_title(
+                    &model.specs_to_color.focus,
+                    InputFocus::Resistance,
+                    "Resistance (Ω)",
+                );
                 Paragraph::new(model.specs_to_color.resistance_input.value())
                     .style(Style::default().fg(Color::Yellow))
                     .scroll((0, resistance_scroll as u16))
-                    .block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .title(" Resistance (Ω) "),
-                    );
+                    .block(Block::default().borders(Borders::ALL).title(title))
+            };
             frame.render_widget(resistance_paragraph, resistance_rect);
 
             let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
@@ -276,14 +283,17 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .specs_to_color
                 .tolerance_input
                 .visual_scroll(tolerance_width as usize);
-            let tolerance_paragraph = Paragraph::new(model.specs_to_color.tolerance_input.value())
-                .style(Style::default().fg(Color::Yellow))
-                .scroll((0, tolerance_scroll as u16))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" Tolerance (%) "),
+            let tolerance_paragraph = {
+                let title = create_title(
+                    &model.specs_to_color.focus,
+                    InputFocus::Tolerance,
+                    "Tolerance (%)",
                 );
+                Paragraph::new(model.specs_to_color.tolerance_input.value())
+                    .style(Style::default().fg(Color::Yellow))
+                    .scroll((0, tolerance_scroll as u16))
+                    .block(Block::default().borders(Borders::ALL).title(title))
+            };
             frame.render_widget(tolerance_paragraph, tolerance_rect);
 
             let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
@@ -291,14 +301,14 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .specs_to_color
                 .tcr_input
                 .visual_scroll(tcr_width as usize);
-            let tcr_paragraph = Paragraph::new(model.specs_to_color.tcr_input.value())
-                .style(Style::default().fg(Color::Yellow))
-                .scroll((0, tcr_scroll as u16))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" TCR (ppm/K) "),
-                );
+            let tcr_paragraph = {
+                let title =
+                    create_title(&model.specs_to_color.focus, InputFocus::Tcr, "TCR (ppm/K)");
+                Paragraph::new(model.specs_to_color.tcr_input.value())
+                    .style(Style::default().fg(Color::Yellow))
+                    .scroll((0, tcr_scroll as u16))
+                    .block(Block::default().borders(Borders::ALL).title(title))
+            };
             frame.render_widget(tcr_paragraph, tcr_rect);
 
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering

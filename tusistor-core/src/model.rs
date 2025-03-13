@@ -1,6 +1,6 @@
 use rusistor::Resistor;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub enum InputFocus {
     #[default]
     Resistance,

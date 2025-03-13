@@ -18,9 +18,11 @@ use tusistor_core::{
 const BAR_WIDTH: u16 = 19;
 
 fn tabs<'a>(selected: &SelectedTab) -> Tabs<'a> {
+    let highlight_style = Style::default().fg(Color::Black).bg(Color::White);
     Tabs::new(vec![" color codes to specs ", " specs to color codes "])
         .padding(" ", " ")
         .divider(symbols::DOT)
+        .highlight_style(highlight_style)
         .select(selected)
 }
 

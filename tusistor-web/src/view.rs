@@ -191,7 +191,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Span::styled("3|4|5|6", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": bands count, "),
                     Span::styled("Shift ←/→", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(": prev/next tab, "),
+                    Span::raw(": prev/next tab"),
                 ],
                 Style::default(),
             );
@@ -247,9 +247,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": calculate color codes, "),
                     Span::styled("Shift ←/→", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(": prev/next tab, "),
-                    Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(": exit"),
+                    Span::raw(": prev/next tab"),
                 ],
                 Style::default(),
             );

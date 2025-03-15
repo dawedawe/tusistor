@@ -29,6 +29,7 @@ pub fn band_numeric_info(bands: usize, band_idx: usize, color: &rusistor::Color)
 
 pub fn band_semantic_info(bands: usize, band_idx: usize) -> String {
     match (bands, band_idx) {
+        (1, 0) => format!("Digit {}", band_idx + 1),
         (3, i) | (4, i) if i <= 1 => format!("Digit {}", band_idx + 1),
         (5, i) | (6, i) if i <= 2 => format!("Digit {}", band_idx + 1),
         (3, 2) | (4, 2) | (5, 3) | (6, 3) => "Multiplier".to_string(),

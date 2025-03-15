@@ -2,16 +2,10 @@ use ratzilla::event;
 use rusistor::{self, Color, Resistor};
 use tusistor_core::{
     model::{InputFocus, SelectedTab},
-    update::{ColorCodesMsg, try_determine_resistor, try_parse_resistance},
+    update::{ColorCodesMsg, SpecsMsg, try_determine_resistor, try_parse_resistance},
 };
 
 use crate::model::Model;
-
-pub enum SpecsMsg {
-    Determine,
-    NextSpecInput,
-    PrevSpecInput,
-}
 
 pub enum Msg {
     ToggleTab,

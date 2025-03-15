@@ -4,13 +4,9 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use rusistor::{Color, Resistor};
 use tui_input::backend::crossterm::EventHandler;
 use tusistor_core::model::{InputFocus, SelectedTab};
-use tusistor_core::update::{ColorCodesMsg, try_determine_resistor, try_parse_resistance};
-
-pub enum SpecsMsg {
-    Determine,
-    NextSpecInput,
-    PrevSpecInput,
-}
+use tusistor_core::update::{
+    ColorCodesMsg, SpecsMsg, try_determine_resistor, try_parse_resistance,
+};
 
 pub enum Msg {
     ToggleTab,

@@ -13,6 +13,12 @@ pub enum ColorCodesMsg {
     PrevColor,
 }
 
+pub enum SpecsMsg {
+    Determine,
+    NextSpecInput,
+    PrevSpecInput,
+}
+
 pub fn try_parse_resistance(input: &str) -> Result<f64, String> {
     match input.parse::<f64>() {
         Ok(t) => Ok(t),

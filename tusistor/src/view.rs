@@ -339,7 +339,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 let specs = resistor.specs();
                 let chart = barchart(&band_infos, specs.ohm, specs.tolerance, specs.tcr);
                 let chart_length: u16 = {
-                    let bands_len: u16 = bands.len() as u16;
+                    let bands_len: u16 = (bands.len() as u16).clamp(2, 6); // give title enough space
                     let bands_widths = bands_len * BAR_WIDTH;
                     let bands_gaps = bands_len - 1;
                     let border_plus_margin = 4;

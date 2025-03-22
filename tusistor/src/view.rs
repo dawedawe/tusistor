@@ -86,6 +86,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
     }
 
     let tabs_width = 49;
+    let specs_style = Style::default().fg(Color::Yellow);
 
     match model.selected_tab {
         SelectedTab::ColorCodesToSpecs => {
@@ -135,7 +136,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
             let specs = model.color_codes_to_specs.resistor.specs();
 
             let resistance_paragraph = Paragraph::new(specs.ohm.to_string())
-                .style(Style::default().fg(Color::Yellow))
+                .style(specs_style)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
@@ -144,7 +145,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
             frame.render_widget(resistance_paragraph, spec_chuncks[0]);
 
             let tolerance_paragraph = Paragraph::new(format!("±{}", (specs.tolerance * 100.0)))
-                .style(Style::default().fg(Color::Yellow))
+                .style(specs_style)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
@@ -153,7 +154,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
             frame.render_widget(tolerance_paragraph, spec_chuncks[1]);
 
             let min_paragraph = Paragraph::new(specs.min_ohm.to_string())
-                .style(Style::default().fg(Color::Yellow))
+                .style(specs_style)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
@@ -162,7 +163,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
             frame.render_widget(min_paragraph, spec_chuncks[2]);
 
             let max_paragraph = Paragraph::new(specs.max_ohm.to_string())
-                .style(Style::default().fg(Color::Yellow))
+                .style(specs_style)
                 .block(
                     Block::default()
                         .borders(Borders::ALL)
@@ -172,7 +173,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
             let tcr_paragraph =
                 Paragraph::new(specs.tcr.map(|f| f.to_string()).unwrap_or_default())
-                    .style(Style::default().fg(Color::Yellow))
+                    .style(specs_style)
                     .block(
                         Block::default()
                             .borders(Borders::ALL)
@@ -264,7 +265,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .visual_scroll(resistance_width as usize);
             let resistance_paragraph =
                 Paragraph::new(model.specs_to_color.resistance_input.value())
-                    .style(Style::default().fg(Color::Yellow))
+                    .style(specs_style)
                     .scroll((0, resistance_scroll as u16))
                     .block(
                         Block::default()
@@ -279,7 +280,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .tolerance_input
                 .visual_scroll(tolerance_width as usize);
             let tolerance_paragraph = Paragraph::new(model.specs_to_color.tolerance_input.value())
-                .style(Style::default().fg(Color::Yellow))
+                .style(specs_style)
                 .scroll((0, tolerance_scroll as u16))
                 .block(
                     Block::default()
@@ -294,7 +295,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .tcr_input
                 .visual_scroll(tcr_width as usize);
             let tcr_paragraph = Paragraph::new(model.specs_to_color.tcr_input.value())
-                .style(Style::default().fg(Color::Yellow))
+                .style(specs_style)
                 .scroll((0, tcr_scroll as u16))
                 .block(
                     Block::default()

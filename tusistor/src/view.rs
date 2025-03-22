@@ -1,4 +1,4 @@
-use crate::model::{InputFocus, Model, SelectedTab};
+use crate::model::Model;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Flex, Layout, Rect},
@@ -10,7 +10,10 @@ use ratatui::{
         Paragraph, Tabs,
     },
 };
-use tusistor_core::view::{band_numeric_info, band_semantic_info};
+use tusistor_core::{
+    model::{InputFocus, SelectedTab},
+    view::{band_numeric_info, band_semantic_info},
+};
 
 const BAR_WIDTH: u16 = 19;
 
@@ -336,7 +339,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 let specs = resistor.specs();
                 let chart = barchart(&band_infos, specs.ohm, specs.tolerance, specs.tcr);
                 let chart_length: u16 = {
-                    let bands_len: u16 = bands.len() as u16;
+                    let bands_len: u16 = (bands.len() as u16).clamp(2, 6); // give title enough space
                     let bands_widths = bands_len * BAR_WIDTH;
                     let bands_gaps = bands_len - 1;
                     let border_plus_margin = 4;
@@ -367,7 +370,7 @@ fn barchart(
         String::from("")
     };
     let title = format!(
-        "Resistance: {}Ω - Tolerance: ±{}%{}",
+        " Resistance: {}Ω - Tolerance: ±{}%{} ",
         ohm,
         tolerance * 100.0,
         tcr

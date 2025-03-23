@@ -309,4 +309,33 @@ mod tests {
         );
         assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 6);
     }
+
+    #[test]
+    fn test_reset_msg() {
+        let mut model = Model::default();
+        model
+            .specs_to_color
+            .resistance_input
+            .handle(tui_input::InputRequest::InsertChar('z'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle(tui_input::InputRequest::InsertChar('z'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle(tui_input::InputRequest::InsertChar('z'));
+        assert_eq!(model.specs_to_color.resistance_input.value(), "z");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "z");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "z");
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: tusistor_core::update::SpecsMsg::Reset,
+            },
+        );
+        assert_eq!(model.specs_to_color.resistance_input.value(), "");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "");
+    }
 }

@@ -12,6 +12,13 @@ pub struct WebInput {
     cursor: usize,
 }
 impl WebInput {
+    pub fn new(value: String) -> Self {
+        WebInput {
+            cursor: value.len(),
+            value,
+        }
+    }
+
     pub fn value(&self) -> &str {
         self.value.as_str()
     }

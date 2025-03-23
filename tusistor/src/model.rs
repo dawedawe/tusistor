@@ -1,6 +1,6 @@
 use rusistor::Resistor;
 use tui_input::Input;
-use tusistor_core::model::{ColorCodesToSpecsModel, InputFocus, SelectedTab};
+use tusistor_core::model::{ColorCodesToSpecsModel, InputFocus, SelectedTab, SpecsHistory};
 
 #[derive(Debug, Default)]
 pub struct SpecsToColorModel {
@@ -9,7 +9,26 @@ pub struct SpecsToColorModel {
     pub tcr_input: Input,
     pub focus: InputFocus,
     pub resistor: Option<Resistor>,
+    pub history: SpecsHistory,
     pub error: Option<String>,
+}
+
+impl SpecsToColorModel {
+    pub fn add_specs_to_history(&mut self) {
+        self.history.add((
+            self.resistance_input.value().to_string(),
+            self.tolerance_input.value().to_string(),
+            self.tcr_input.value().to_string(),
+        ));
+    }
+
+    pub fn set_specs_from_history(&mut self) {
+        if let Some((a, b, c)) = self.history.try_get() {
+            self.resistance_input = Input::new(a.to_string());
+            self.tolerance_input = Input::new(b.to_string());
+            self.tcr_input = Input::new(c.to_string());
+        }
+    }
 }
 
 #[derive(Debug)]

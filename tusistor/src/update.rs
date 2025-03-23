@@ -43,6 +43,12 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
         (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevBand,
         }),
+        (KeyCode::Up, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::PrevHistory,
+        }),
+        (KeyCode::Down, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::NextHistory,
+        }),
         (KeyCode::Char('X'), SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::Reset,
         }),
@@ -91,6 +97,8 @@ pub fn update(model: &mut Model, msg: Msg) {
                 Ok(resistor) => {
                     model.specs_to_color.resistor = Some(resistor);
                     model.specs_to_color.error = None;
+                    model.specs_to_color.add_specs_to_history();
+                    model.specs_to_color.history.clear_idx();
                 }
                 Err(e) => {
                     model.specs_to_color.resistor = None;
@@ -140,6 +148,18 @@ pub fn update(model: &mut Model, msg: Msg) {
             } else {
                 model.specs_to_color.resistor = None;
             }
+        }
+        Msg::SpecsMsg {
+            msg: SpecsMsg::PrevHistory,
+        } => {
+            model.specs_to_color.history.prev();
+            model.specs_to_color.set_specs_from_history();
+        }
+        Msg::SpecsMsg {
+            msg: SpecsMsg::NextHistory,
+        } => {
+            model.specs_to_color.history.next();
+            model.specs_to_color.set_specs_from_history();
         }
         Msg::SpecsMsg {
             msg: SpecsMsg::Reset,

@@ -84,6 +84,18 @@ pub fn handle_event(model: &mut Model, event: ratzilla::event::KeyEvent) {
                 msg: SpecsMsg::PrevSpecInput,
             },
         ),
+        (SelectedTab::SpecsToColorCodes, event::KeyCode::Up) => update(
+            model,
+            Msg::SpecsMsg {
+                msg: SpecsMsg::PrevHistory,
+            },
+        ),
+        (SelectedTab::SpecsToColorCodes, event::KeyCode::Down) => update(
+            model,
+            Msg::SpecsMsg {
+                msg: SpecsMsg::NextHistory,
+            },
+        ),
         (SelectedTab::SpecsToColorCodes, event::KeyCode::Char('X')) => update(
             model,
             Msg::SpecsMsg {
@@ -201,6 +213,13 @@ pub fn update(model: &mut Model, msg: Msg) {
                     Ok(resistor) => {
                         model.specs_to_color.resistor = Some(resistor);
                         model.specs_to_color.error = None;
+                        model.specs_to_color.history.add((
+                            model.specs_to_color.resistance_input.value().to_string(),
+                            model.specs_to_color.tolerance_input.value().to_string(),
+                            model.specs_to_color.tcr_input.value().to_string(),
+                        ));
+                        model.specs_to_color.add_specs_to_history();
+                        model.specs_to_color.history.clear_idx();
                     }
                     Err(e) => {
                         model.specs_to_color.resistor = None;
@@ -243,6 +262,14 @@ pub fn update(model: &mut Model, msg: Msg) {
                 } else {
                     model.specs_to_color.resistor = None;
                 }
+            }
+            SpecsMsg::PrevHistory => {
+                model.specs_to_color.history.prev();
+                model.specs_to_color.set_specs_from_history();
+            }
+            SpecsMsg::NextHistory => {
+                model.specs_to_color.history.next();
+                model.specs_to_color.set_specs_from_history();
             }
             SpecsMsg::Reset => model.specs_to_color = SpecsToColorModel::default(),
         },

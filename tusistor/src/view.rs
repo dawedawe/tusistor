@@ -232,7 +232,7 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 .split(chunks[1]);
 
             let tabs_rect = center_horizontal(chunks[0], tabs_width);
-            let help_msg_rect = center_horizontal(chunks[3], 82);
+            let help_msg_rect = center_horizontal(chunks[3], 115);
             let resistance_rect = input_rects[0];
             let tolerance_rect = input_rects[1];
             let tcr_rect = input_rects[2];

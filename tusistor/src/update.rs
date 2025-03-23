@@ -271,7 +271,7 @@ pub fn update(model: &mut Model, msg: Msg) {
 
 #[cfg(test)]
 mod tests {
-    use tusistor_core::model::SelectedTab;
+    use tusistor_core::{model::SelectedTab, update};
 
     use super::{ColorCodesMsg, Msg, update};
     use crate::model::Model;
@@ -351,11 +351,68 @@ mod tests {
         update(
             &mut model,
             Msg::SpecsMsg {
-                msg: tusistor_core::update::SpecsMsg::Reset,
+                msg: update::SpecsMsg::Reset,
             },
         );
         assert_eq!(model.specs_to_color.resistance_input.value(), "");
         assert_eq!(model.specs_to_color.tolerance_input.value(), "");
         assert_eq!(model.specs_to_color.tcr_input.value(), "");
+    }
+
+    #[test]
+    fn test_history() {
+        let mut model = Model::default();
+        model
+            .specs_to_color
+            .resistance_input
+            .handle(tui_input::InputRequest::InsertChar('1'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle(tui_input::InputRequest::InsertChar('2'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle(tui_input::InputRequest::InsertChar('5'));
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::Determine,
+            },
+        );
+
+        model
+            .specs_to_color
+            .resistance_input
+            .handle(tui_input::InputRequest::InsertChar('2'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle(tui_input::InputRequest::InsertChar('5'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle(tui_input::InputRequest::InsertChar('1'));
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::Determine,
+            },
+        );
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::PrevHistory,
+            },
+        );
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::PrevHistory,
+            },
+        );
+        assert_eq!(model.specs_to_color.resistance_input.value(), "1");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "2");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "5");
     }
 }

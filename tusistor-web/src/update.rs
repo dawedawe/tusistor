@@ -278,7 +278,7 @@ pub fn update(model: &mut Model, msg: Msg) {
 
 #[cfg(test)]
 mod tests {
-    use crate::model::Model;
+    use crate::{model::Model, update};
 
     use super::{Msg, update};
     use ratzilla::event::{KeyCode, KeyEvent};
@@ -352,5 +352,71 @@ mod tests {
         assert_eq!(model.specs_to_color.resistance_input.value(), "");
         assert_eq!(model.specs_to_color.tolerance_input.value(), "");
         assert_eq!(model.specs_to_color.tcr_input.value(), "");
+    }
+
+    #[test]
+    fn test_history() {
+        fn create_event(c: char) -> KeyEvent {
+            KeyEvent {
+                code: KeyCode::Char(c),
+                shift: false,
+                ctrl: false,
+                alt: false,
+            }
+        }
+
+        let mut model = Model::default();
+        model
+            .specs_to_color
+            .resistance_input
+            .handle_event(&create_event('1'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle_event(&create_event('2'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle_event(&create_event('5'));
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::Determine,
+            },
+        );
+
+        model
+            .specs_to_color
+            .resistance_input
+            .handle_event(&create_event('2'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle_event(&create_event('5'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle_event(&create_event('1'));
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::Determine,
+            },
+        );
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::PrevHistory,
+            },
+        );
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::PrevHistory,
+            },
+        );
+        assert_eq!(model.specs_to_color.resistance_input.value(), "1");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "2");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "5");
     }
 }

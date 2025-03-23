@@ -5,7 +5,7 @@ use tusistor_core::{
     update::{ColorCodesMsg, SpecsMsg, try_determine_resistor, try_parse_resistance},
 };
 
-use crate::model::Model;
+use crate::model::{Model, SpecsToColorModel};
 
 pub enum Msg {
     ToggleTab,
@@ -82,6 +82,12 @@ pub fn handle_event(model: &mut Model, event: ratzilla::event::KeyEvent) {
             model,
             Msg::SpecsMsg {
                 msg: SpecsMsg::PrevSpecInput,
+            },
+        ),
+        (SelectedTab::SpecsToColorCodes, event::KeyCode::Char('X')) => update(
+            model,
+            Msg::SpecsMsg {
+                msg: SpecsMsg::Reset,
             },
         ),
         (SelectedTab::SpecsToColorCodes, _) => {
@@ -201,10 +207,6 @@ pub fn update(model: &mut Model, msg: Msg) {
                         model.specs_to_color.error = Some(e);
                     }
                 }
-                model.specs_to_color.resistance_input.reset();
-                model.specs_to_color.tolerance_input.reset();
-                model.specs_to_color.tcr_input.reset();
-                model.specs_to_color.focus = InputFocus::Resistance;
             }
             SpecsMsg::NextSpecInput | SpecsMsg::PrevSpecInput => {
                 model.specs_to_color.error = match model.specs_to_color.focus {
@@ -242,6 +244,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                     model.specs_to_color.resistor = None;
                 }
             }
+            SpecsMsg::Reset => model.specs_to_color = SpecsToColorModel::default(),
         },
     }
 }

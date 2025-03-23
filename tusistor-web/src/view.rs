@@ -252,6 +252,8 @@ pub fn view(model: &Model, frame: &mut Frame) {
                     Span::raw(": prev/next input, "),
                     Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": calculate color codes, "),
+                    Span::styled("X", Style::default().add_modifier(Modifier::BOLD)),
+                    Span::raw(": reset, "),
                     Span::styled("Shift ←/→", Style::default().add_modifier(Modifier::BOLD)),
                     Span::raw(": prev/next tab"),
                 ],

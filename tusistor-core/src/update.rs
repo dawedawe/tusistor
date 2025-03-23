@@ -17,6 +17,8 @@ pub enum SpecsMsg {
     Determine,
     NextSpecInput,
     PrevSpecInput,
+    PrevHistory,
+    NextHistory,
     Reset,
 }
 pub fn try_parse_resistance(input: &str) -> Result<f64, String> {

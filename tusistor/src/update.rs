@@ -43,6 +43,12 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
         (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevBand,
         }),
+        (KeyCode::Up, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::PrevHistory,
+        }),
+        (KeyCode::Down, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::NextHistory,
+        }),
         (KeyCode::Char('X'), SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::Reset,
         }),
@@ -91,6 +97,8 @@ pub fn update(model: &mut Model, msg: Msg) {
                 Ok(resistor) => {
                     model.specs_to_color.resistor = Some(resistor);
                     model.specs_to_color.error = None;
+                    model.specs_to_color.add_specs_to_history();
+                    model.specs_to_color.history.clear_idx();
                 }
                 Err(e) => {
                     model.specs_to_color.resistor = None;
@@ -140,6 +148,18 @@ pub fn update(model: &mut Model, msg: Msg) {
             } else {
                 model.specs_to_color.resistor = None;
             }
+        }
+        Msg::SpecsMsg {
+            msg: SpecsMsg::PrevHistory,
+        } => {
+            model.specs_to_color.history.prev();
+            model.specs_to_color.set_specs_from_history();
+        }
+        Msg::SpecsMsg {
+            msg: SpecsMsg::NextHistory,
+        } => {
+            model.specs_to_color.history.next();
+            model.specs_to_color.set_specs_from_history();
         }
         Msg::SpecsMsg {
             msg: SpecsMsg::Reset,
@@ -251,7 +271,7 @@ pub fn update(model: &mut Model, msg: Msg) {
 
 #[cfg(test)]
 mod tests {
-    use tusistor_core::model::SelectedTab;
+    use tusistor_core::{model::SelectedTab, update};
 
     use super::{ColorCodesMsg, Msg, update};
     use crate::model::Model;
@@ -331,11 +351,68 @@ mod tests {
         update(
             &mut model,
             Msg::SpecsMsg {
-                msg: tusistor_core::update::SpecsMsg::Reset,
+                msg: update::SpecsMsg::Reset,
             },
         );
         assert_eq!(model.specs_to_color.resistance_input.value(), "");
         assert_eq!(model.specs_to_color.tolerance_input.value(), "");
         assert_eq!(model.specs_to_color.tcr_input.value(), "");
+    }
+
+    #[test]
+    fn test_history() {
+        let mut model = Model::default();
+        model
+            .specs_to_color
+            .resistance_input
+            .handle(tui_input::InputRequest::InsertChar('1'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle(tui_input::InputRequest::InsertChar('2'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle(tui_input::InputRequest::InsertChar('5'));
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::Determine,
+            },
+        );
+
+        model
+            .specs_to_color
+            .resistance_input
+            .handle(tui_input::InputRequest::InsertChar('2'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle(tui_input::InputRequest::InsertChar('5'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle(tui_input::InputRequest::InsertChar('1'));
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::Determine,
+            },
+        );
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::PrevHistory,
+            },
+        );
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: update::SpecsMsg::PrevHistory,
+            },
+        );
+        assert_eq!(model.specs_to_color.resistance_input.value(), "1");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "2");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "5");
     }
 }

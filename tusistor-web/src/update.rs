@@ -5,7 +5,7 @@ use tusistor_core::{
     update::{ColorCodesMsg, SpecsMsg, try_determine_resistor, try_parse_resistance},
 };
 
-use crate::model::Model;
+use crate::model::{Model, SpecsToColorModel};
 
 pub enum Msg {
     ToggleTab,
@@ -82,6 +82,12 @@ pub fn handle_event(model: &mut Model, event: ratzilla::event::KeyEvent) {
             model,
             Msg::SpecsMsg {
                 msg: SpecsMsg::PrevSpecInput,
+            },
+        ),
+        (SelectedTab::SpecsToColorCodes, event::KeyCode::Char('X')) => update(
+            model,
+            Msg::SpecsMsg {
+                msg: SpecsMsg::Reset,
             },
         ),
         (SelectedTab::SpecsToColorCodes, _) => {
@@ -201,10 +207,6 @@ pub fn update(model: &mut Model, msg: Msg) {
                         model.specs_to_color.error = Some(e);
                     }
                 }
-                model.specs_to_color.resistance_input.reset();
-                model.specs_to_color.tolerance_input.reset();
-                model.specs_to_color.tcr_input.reset();
-                model.specs_to_color.focus = InputFocus::Resistance;
             }
             SpecsMsg::NextSpecInput | SpecsMsg::PrevSpecInput => {
                 model.specs_to_color.error = match model.specs_to_color.focus {
@@ -242,6 +244,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                     model.specs_to_color.resistor = None;
                 }
             }
+            SpecsMsg::Reset => model.specs_to_color = SpecsToColorModel::default(),
         },
     }
 }
@@ -251,6 +254,7 @@ mod tests {
     use crate::model::Model;
 
     use super::{Msg, update};
+    use ratzilla::event::{KeyCode, KeyEvent};
     use tusistor_core::update::ColorCodesMsg;
 
     #[test]
@@ -289,5 +293,37 @@ mod tests {
             },
         );
         assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 6);
+    }
+
+    #[test]
+    fn test_reset_msg() {
+        let mut model = Model::default();
+        let key_event = KeyEvent {
+            code: KeyCode::Char('z'),
+            shift: false,
+            ctrl: false,
+            alt: false,
+        };
+        model
+            .specs_to_color
+            .resistance_input
+            .handle_event(&key_event);
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle_event(&key_event);
+        model.specs_to_color.tcr_input.handle_event(&key_event);
+        assert_eq!(model.specs_to_color.resistance_input.value(), "z");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "z");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "z");
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: tusistor_core::update::SpecsMsg::Reset,
+            },
+        );
+        assert_eq!(model.specs_to_color.resistance_input.value(), "");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "");
     }
 }

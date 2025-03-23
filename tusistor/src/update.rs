@@ -1,4 +1,4 @@
-use crate::model::Model;
+use crate::model::{Model, SpecsToColorModel};
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use rusistor::{Color, Resistor};
@@ -42,6 +42,9 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
         }),
         (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevBand,
+        }),
+        (KeyCode::Char('X'), SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::Reset,
         }),
         (KeyCode::Up, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevColor,
@@ -94,10 +97,6 @@ pub fn update(model: &mut Model, msg: Msg) {
                     model.specs_to_color.error = Some(e);
                 }
             }
-            model.specs_to_color.resistance_input.reset();
-            model.specs_to_color.tolerance_input.reset();
-            model.specs_to_color.tcr_input.reset();
-            model.specs_to_color.focus = InputFocus::Resistance;
         }
         Msg::SpecsMsg {
             msg: SpecsMsg::NextSpecInput,
@@ -142,6 +141,9 @@ pub fn update(model: &mut Model, msg: Msg) {
                 model.specs_to_color.resistor = None;
             }
         }
+        Msg::SpecsMsg {
+            msg: SpecsMsg::Reset,
+        } => model.specs_to_color = SpecsToColorModel::default(),
         Msg::Exit => {
             model.running = false;
         }
@@ -306,5 +308,34 @@ mod tests {
             },
         );
         assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 6);
+    }
+
+    #[test]
+    fn test_reset_msg() {
+        let mut model = Model::default();
+        model
+            .specs_to_color
+            .resistance_input
+            .handle(tui_input::InputRequest::InsertChar('z'));
+        model
+            .specs_to_color
+            .tolerance_input
+            .handle(tui_input::InputRequest::InsertChar('z'));
+        model
+            .specs_to_color
+            .tcr_input
+            .handle(tui_input::InputRequest::InsertChar('z'));
+        assert_eq!(model.specs_to_color.resistance_input.value(), "z");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "z");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "z");
+        update(
+            &mut model,
+            Msg::SpecsMsg {
+                msg: tusistor_core::update::SpecsMsg::Reset,
+            },
+        );
+        assert_eq!(model.specs_to_color.resistance_input.value(), "");
+        assert_eq!(model.specs_to_color.tolerance_input.value(), "");
+        assert_eq!(model.specs_to_color.tcr_input.value(), "");
     }
 }

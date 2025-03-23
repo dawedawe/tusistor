@@ -36,7 +36,10 @@ impl SpecsHistory {
     }
 
     pub fn add(&mut self, specs: (String, String, String)) {
-        self.history.push(specs);
+        match self.history.last() {
+            Some(x) if *x == specs => (),
+            _ => self.history.push(specs),
+        }
     }
 
     pub fn clear_idx(&mut self) {

@@ -15,11 +15,12 @@ pub struct SpecsToColorModel {
 
 impl SpecsToColorModel {
     pub fn add_specs_to_history(&mut self) {
-        self.history.add((
+        let specs = (
             self.resistance_input.value().to_string(),
             self.tolerance_input.value().to_string(),
             self.tcr_input.value().to_string(),
-        ));
+        );
+        self.history.add(specs);
     }
 
     pub fn set_specs_from_history(&mut self) {

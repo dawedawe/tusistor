@@ -23,6 +23,10 @@ impl WebInput {
         self.value.as_str()
     }
 
+    pub fn cursor(&self) -> usize {
+        self.cursor
+    }
+
     pub fn visual_cursor(&self) -> usize {
         self.value.len()
     }
@@ -74,6 +78,11 @@ impl WebInput {
     pub fn reset(&mut self) {
         self.value.clear();
         self.cursor = 0;
+    }
+
+    pub(crate) fn with_cursor(mut self, cursor: usize) -> Self {
+        self.cursor = cursor;
+        self
     }
 }
 

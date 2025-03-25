@@ -1,11 +1,11 @@
 use ratzilla::event;
 use rusistor::{self, Color, Resistor};
 use tusistor_core::{
-    model::{InputFocus, SelectedTab},
+    model::{InputFocus, SelectedTab, SpecsToColorModel},
     update::{ColorCodesMsg, SpecsMsg, try_determine_resistor, try_parse_resistance},
 };
 
-use crate::model::{Model, SpecsToColorModel};
+use crate::{input::WebInput, model::Model};
 
 pub enum Msg {
     ToggleTab,
@@ -103,12 +103,16 @@ pub fn handle_event(model: &mut Model, event: ratzilla::event::KeyEvent) {
             },
         ),
         (SelectedTab::SpecsToColorCodes, _) => {
-            let target_input = match model.specs_to_color.focus {
-                InputFocus::Resistance => &mut model.specs_to_color.resistance_input,
-                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input,
-                InputFocus::Tcr => &mut model.specs_to_color.tcr_input,
+            let target_input_state = match model.specs_to_color.focus {
+                InputFocus::Resistance => &mut model.specs_to_color.resistance_input_state,
+                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input_state,
+                InputFocus::Tcr => &mut model.specs_to_color.tcr_input_state,
             };
-            target_input.handle_event(&event);
+            let mut input = WebInput::new(target_input_state.value.clone())
+                .with_cursor(target_input_state.cursor);
+            input.handle_event(&event);
+            target_input_state.cursor = input.cursor();
+            target_input_state.value = input.value().to_string();
         }
         _ => (),
     }
@@ -206,17 +210,21 @@ pub fn update(model: &mut Model, msg: Msg) {
         Msg::SpecsMsg { msg } => match msg {
             SpecsMsg::Determine => {
                 match try_determine_resistor(
-                    model.specs_to_color.resistance_input.value(),
-                    model.specs_to_color.tolerance_input.value(),
-                    model.specs_to_color.tcr_input.value(),
+                    &model.specs_to_color.resistance_input_state.value,
+                    &model.specs_to_color.tolerance_input_state.value,
+                    &model.specs_to_color.tcr_input_state.value,
                 ) {
                     Ok(resistor) => {
                         model.specs_to_color.resistor = Some(resistor);
                         model.specs_to_color.error = None;
                         model.specs_to_color.history.add((
-                            model.specs_to_color.resistance_input.value().to_string(),
-                            model.specs_to_color.tolerance_input.value().to_string(),
-                            model.specs_to_color.tcr_input.value().to_string(),
+                            model
+                                .specs_to_color
+                                .resistance_input_state
+                                .value
+                                .to_string(),
+                            model.specs_to_color.tolerance_input_state.value.to_string(),
+                            model.specs_to_color.tcr_input_state.value.to_string(),
                         ));
                         model.specs_to_color.add_specs_to_history();
                         model.specs_to_color.history.clear_idx();
@@ -230,7 +238,7 @@ pub fn update(model: &mut Model, msg: Msg) {
             SpecsMsg::NextSpecInput | SpecsMsg::PrevSpecInput => {
                 model.specs_to_color.error = match model.specs_to_color.focus {
                     InputFocus::Resistance => {
-                        let value = model.specs_to_color.resistance_input.value();
+                        let value = &model.specs_to_color.resistance_input_state.value;
                         if value.trim().is_empty() {
                             None
                         } else {
@@ -238,7 +246,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                         }
                     }
                     InputFocus::Tolerance => {
-                        let value = model.specs_to_color.tolerance_input.value();
+                        let value = &model.specs_to_color.tolerance_input_state.value;
                         if value.trim().is_empty() {
                             None
                         } else {
@@ -246,7 +254,7 @@ pub fn update(model: &mut Model, msg: Msg) {
                         }
                     }
                     InputFocus::Tcr => {
-                        let value = model.specs_to_color.tcr_input.value();
+                        let value = &model.specs_to_color.tcr_input_state.value;
                         if value.trim().is_empty() {
                             None
                         } else {
@@ -281,8 +289,7 @@ mod tests {
     use crate::{model::Model, update};
 
     use super::{Msg, update};
-    use ratzilla::event::{KeyCode, KeyEvent};
-    use tusistor_core::update::ColorCodesMsg;
+    use tusistor_core::{model::InputState, update::ColorCodesMsg};
 
     #[test]
     fn test_nbands_msg() {
@@ -325,59 +332,46 @@ mod tests {
     #[test]
     fn test_reset_msg() {
         let mut model = Model::default();
-        let key_event = KeyEvent {
-            code: KeyCode::Char('z'),
-            shift: false,
-            ctrl: false,
-            alt: false,
+        model.specs_to_color.resistance_input_state = InputState {
+            value: String::from("z"),
+            cursor: 1,
         };
-        model
-            .specs_to_color
-            .resistance_input
-            .handle_event(&key_event);
-        model
-            .specs_to_color
-            .tolerance_input
-            .handle_event(&key_event);
-        model.specs_to_color.tcr_input.handle_event(&key_event);
-        assert_eq!(model.specs_to_color.resistance_input.value(), "z");
-        assert_eq!(model.specs_to_color.tolerance_input.value(), "z");
-        assert_eq!(model.specs_to_color.tcr_input.value(), "z");
+        model.specs_to_color.tolerance_input_state = InputState {
+            value: String::from("z"),
+            cursor: 1,
+        };
+        model.specs_to_color.tcr_input_state = InputState {
+            value: String::from("z"),
+            cursor: 1,
+        };
+
         update(
             &mut model,
             Msg::SpecsMsg {
                 msg: tusistor_core::update::SpecsMsg::Reset,
             },
         );
-        assert_eq!(model.specs_to_color.resistance_input.value(), "");
-        assert_eq!(model.specs_to_color.tolerance_input.value(), "");
-        assert_eq!(model.specs_to_color.tcr_input.value(), "");
+        assert_eq!(model.specs_to_color.resistance_input_state.value, "");
+        assert_eq!(model.specs_to_color.tolerance_input_state.value, "");
+        assert_eq!(model.specs_to_color.tcr_input_state.value, "");
     }
 
     #[test]
     fn test_history() {
-        fn create_event(c: char) -> KeyEvent {
-            KeyEvent {
-                code: KeyCode::Char(c),
-                shift: false,
-                ctrl: false,
-                alt: false,
-            }
-        }
-
         let mut model = Model::default();
-        model
-            .specs_to_color
-            .resistance_input
-            .handle_event(&create_event('1'));
-        model
-            .specs_to_color
-            .tolerance_input
-            .handle_event(&create_event('2'));
-        model
-            .specs_to_color
-            .tcr_input
-            .handle_event(&create_event('5'));
+        model.specs_to_color.resistance_input_state = InputState {
+            value: String::from("1"),
+            cursor: 1,
+        };
+        model.specs_to_color.tolerance_input_state = InputState {
+            value: String::from("2"),
+            cursor: 1,
+        };
+
+        model.specs_to_color.tcr_input_state = InputState {
+            value: String::from("5"),
+            cursor: 1,
+        };
         update(
             &mut model,
             Msg::SpecsMsg {
@@ -385,18 +379,19 @@ mod tests {
             },
         );
 
-        model
-            .specs_to_color
-            .resistance_input
-            .handle_event(&create_event('2'));
-        model
-            .specs_to_color
-            .tolerance_input
-            .handle_event(&create_event('5'));
-        model
-            .specs_to_color
-            .tcr_input
-            .handle_event(&create_event('1'));
+        model.specs_to_color.resistance_input_state = InputState {
+            value: String::from("2"),
+            cursor: 1,
+        };
+        model.specs_to_color.tolerance_input_state = InputState {
+            value: String::from("5"),
+            cursor: 1,
+        };
+
+        model.specs_to_color.tcr_input_state = InputState {
+            value: String::from("1"),
+            cursor: 1,
+        };
         update(
             &mut model,
             Msg::SpecsMsg {
@@ -415,8 +410,8 @@ mod tests {
                 msg: update::SpecsMsg::PrevHistory,
             },
         );
-        assert_eq!(model.specs_to_color.resistance_input.value(), "1");
-        assert_eq!(model.specs_to_color.tolerance_input.value(), "2");
-        assert_eq!(model.specs_to_color.tcr_input.value(), "5");
+        assert_eq!(model.specs_to_color.resistance_input_state.value, "1");
+        assert_eq!(model.specs_to_color.tolerance_input_state.value, "2");
+        assert_eq!(model.specs_to_color.tcr_input_state.value, "5");
     }
 }

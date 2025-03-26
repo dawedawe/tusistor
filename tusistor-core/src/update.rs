@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-use rusistor::Resistor;
+use rusistor::{Color, Resistor};
+
+use crate::model::{ColorCodesToSpecsModel, InputFocus, SpecsToColorModel};
 
 pub enum ColorCodesMsg {
     ThreeBands,
@@ -21,6 +23,151 @@ pub enum SpecsMsg {
     NextHistory,
     Reset,
 }
+
+pub fn update_on_colorcodemsg(model: &mut ColorCodesToSpecsModel, msg: ColorCodesMsg) {
+    match msg {
+        ColorCodesMsg::ThreeBands => {
+            model.resistor = Resistor::ThreeBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+            };
+            model.selected_band = model.selected_band.min(2)
+        }
+        ColorCodesMsg::FourBands => {
+            model.resistor = Resistor::FourBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Brown,
+            };
+            model.selected_band = model.selected_band.min(3)
+        }
+        ColorCodesMsg::FiveBands => {
+            model.resistor = Resistor::FiveBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+            };
+            model.selected_band = model.selected_band.min(4)
+        }
+        ColorCodesMsg::SixBands => {
+            model.resistor = Resistor::SixBand {
+                band1: rusistor::Color::Brown,
+                band2: rusistor::Color::Black,
+                band3: rusistor::Color::Black,
+                band4: rusistor::Color::Black,
+                band5: rusistor::Color::Brown,
+                band6: rusistor::Color::Black,
+            };
+            model.selected_band = model.selected_band.min(5)
+        }
+        ColorCodesMsg::NextBand => {
+            model.selected_band = (model.selected_band + 1) % model.resistor.bands().len()
+        }
+        ColorCodesMsg::PrevBand => {
+            let bands_count = model.resistor.bands().len();
+            model.selected_band = (model.selected_band + (bands_count - 1)) % bands_count
+        }
+        ColorCodesMsg::NextColor => {
+            let current_idx: usize = *model.resistor.bands()[model.selected_band] as usize;
+            let mut i: usize = 0;
+            let mut resistor = Err("".to_string());
+            while resistor.is_err() {
+                i += 1;
+                let next_color = Color::from((current_idx + i) % 13);
+                resistor = model.resistor.with_color(next_color, model.selected_band);
+            }
+            model.resistor = resistor.unwrap();
+        }
+        ColorCodesMsg::PrevColor => {
+            let current_idx = *model.resistor.bands()[model.selected_band] as usize;
+            let mut i: usize = 13;
+            let mut resistor = Err("".to_string());
+            while resistor.is_err() {
+                i -= 1;
+                let next_color = Color::from((current_idx + i) % 13);
+                resistor = model.resistor.with_color(next_color, model.selected_band);
+            }
+            model.resistor = resistor.unwrap();
+        }
+    }
+}
+pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
+    match msg {
+        SpecsMsg::Determine => {
+            match try_determine_resistor(
+                &model.resistance_input_state.value,
+                &model.tolerance_input_state.value,
+                &model.tcr_input_state.value,
+            ) {
+                Ok(resistor) => {
+                    model.resistor = Some(resistor);
+                    model.error = None;
+                    model.history.add((
+                        model.resistance_input_state.value.to_string(),
+                        model.tolerance_input_state.value.to_string(),
+                        model.tcr_input_state.value.to_string(),
+                    ));
+                    model.add_specs_to_history();
+                    model.history.clear_idx();
+                }
+                Err(e) => {
+                    model.resistor = None;
+                    model.error = Some(e);
+                }
+            }
+        }
+        SpecsMsg::NextSpecInput | SpecsMsg::PrevSpecInput => {
+            model.error = match model.focus {
+                InputFocus::Resistance => {
+                    let value = &model.resistance_input_state.value;
+                    if value.trim().is_empty() {
+                        None
+                    } else {
+                        try_parse_resistance(value).err().map(|err| err.to_string())
+                    }
+                }
+                InputFocus::Tolerance => {
+                    let value = &model.tolerance_input_state.value;
+                    if value.trim().is_empty() {
+                        None
+                    } else {
+                        value.parse::<f64>().err().map(|err| err.to_string())
+                    }
+                }
+                InputFocus::Tcr => {
+                    let value = &model.tcr_input_state.value;
+                    if value.trim().is_empty() {
+                        None
+                    } else {
+                        value.parse::<u32>().err().map(|err| err.to_string())
+                    }
+                }
+            };
+            if model.error.is_none() {
+                model.focus = match msg {
+                    SpecsMsg::NextSpecInput => model.focus.next(),
+                    _ => model.focus.prev(),
+                };
+            } else {
+                model.resistor = None;
+            }
+        }
+        SpecsMsg::PrevHistory => {
+            model.history.prev();
+            model.set_specs_from_history();
+        }
+        SpecsMsg::NextHistory => {
+            model.history.next();
+            model.set_specs_from_history();
+        }
+        SpecsMsg::Reset => *model = SpecsToColorModel::default(),
+    }
+}
+
 pub fn try_parse_resistance(input: &str) -> Result<f64, String> {
     match input.parse::<f64>() {
         Ok(t) => Ok(t),

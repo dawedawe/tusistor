@@ -22,54 +22,54 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 }
 
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
-    match (key.code, &model.selected_tab) {
-        (KeyCode::Left, _) | (KeyCode::Right, _) if key.modifiers == KeyModifiers::SHIFT => {
+    match (&model.selected_tab, key.code) {
+        (_, KeyCode::Left) | (_, KeyCode::Right) if key.modifiers == KeyModifiers::SHIFT => {
             Some(Msg::ToggleTab)
         }
-        (KeyCode::Enter, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+        (SelectedTab::SpecsToColorCodes, KeyCode::Enter) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::Determine,
         }),
-        (KeyCode::Tab, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+        (SelectedTab::SpecsToColorCodes, KeyCode::Tab) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::NextSpecInput,
         }),
-        (KeyCode::Tab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Tab) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::NextBand,
         }),
-        (KeyCode::BackTab, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+        (SelectedTab::SpecsToColorCodes, KeyCode::BackTab) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::PrevSpecInput,
         }),
-        (KeyCode::BackTab, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::BackTab) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevBand,
         }),
-        (KeyCode::Up, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+        (SelectedTab::SpecsToColorCodes, KeyCode::Up) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::PrevHistory,
         }),
-        (KeyCode::Down, SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+        (SelectedTab::SpecsToColorCodes, KeyCode::Down) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::NextHistory,
         }),
-        (KeyCode::Char('X'), SelectedTab::SpecsToColorCodes) => Some(Msg::SpecsMsg {
+        (SelectedTab::SpecsToColorCodes, KeyCode::Char('X')) => Some(Msg::SpecsMsg {
             msg: SpecsMsg::Reset,
         }),
-        (KeyCode::Up, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Up) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevColor,
         }),
-        (KeyCode::Down, SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Down) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::NextColor,
         }),
-        (KeyCode::Char('3'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Char('3')) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::ThreeBands,
         }),
-        (KeyCode::Char('4'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Char('4')) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::FourBands,
         }),
-        (KeyCode::Char('5'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Char('5')) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::FiveBands,
         }),
-        (KeyCode::Char('6'), SelectedTab::ColorCodesToSpecs) => Some(Msg::ColorCodesMsg {
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Char('6')) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::SixBands,
         }),
-        (KeyCode::Esc, _) => Some(Msg::Exit),
-        (_, SelectedTab::SpecsToColorCodes) => {
+        (_, KeyCode::Esc) => Some(Msg::Exit),
+        (SelectedTab::SpecsToColorCodes, _) => {
             let target_input_state = match model.specs_to_color.focus {
                 InputFocus::Resistance => &mut model.specs_to_color.resistance_input_state,
                 InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input_state,

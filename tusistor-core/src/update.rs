@@ -266,18 +266,20 @@ mod tests {
 
     #[test]
     fn test_reset_msg() {
-        let mut model = SpecsToColorModel::default();
-        model.resistance_input_state = InputState {
-            value: String::from("z"),
-            cursor: 1,
-        };
-        model.tolerance_input_state = InputState {
-            value: String::from("z"),
-            cursor: 1,
-        };
-        model.tcr_input_state = InputState {
-            value: String::from("z"),
-            cursor: 1,
+        let mut model = SpecsToColorModel {
+            resistance_input_state: InputState {
+                value: String::from("z"),
+                cursor: 1,
+            },
+            tolerance_input_state: InputState {
+                value: String::from("z"),
+                cursor: 1,
+            },
+            tcr_input_state: InputState {
+                value: String::from("z"),
+                cursor: 1,
+            },
+            ..Default::default()
         };
         update_on_specsmsg(&mut model, SpecsMsg::Reset);
         assert_eq!(model.resistance_input_state.value, "");
@@ -287,19 +289,20 @@ mod tests {
 
     #[test]
     fn test_history() {
-        let mut model = SpecsToColorModel::default();
-        model.resistance_input_state = InputState {
-            value: String::from("1"),
-            cursor: 1,
-        };
-        model.tolerance_input_state = InputState {
-            value: String::from("2"),
-            cursor: 1,
-        };
-
-        model.tcr_input_state = InputState {
-            value: String::from("5"),
-            cursor: 1,
+        let mut model = SpecsToColorModel {
+            resistance_input_state: InputState {
+                value: String::from("1"),
+                cursor: 1,
+            },
+            tolerance_input_state: InputState {
+                value: String::from("2"),
+                cursor: 1,
+            },
+            tcr_input_state: InputState {
+                value: String::from("5"),
+                cursor: 1,
+            },
+            ..Default::default()
         };
         update_on_specsmsg(&mut model, SpecsMsg::Determine);
 

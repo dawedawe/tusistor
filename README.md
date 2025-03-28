@@ -6,9 +6,9 @@ You can go from selected color codes to specs or from specs to color codes.
 The resistance input supports the RKM notation, e.g. `4k7`.  
 The input of tolerance and/or TCR are optional depending on your resistance input.
 
-![tusistor1.png](./tusistor1.png)
+![tab1.gif](./tab1.gif)
 
-![tusistor2.png](./tusistor2.png)
+![tab2.gif](./tab2.gif)
 
 A Wasm version built with [Ratzilla] is available here <https://www.function-type.com/tusistor/>
 

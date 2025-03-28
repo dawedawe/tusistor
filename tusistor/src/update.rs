@@ -69,7 +69,7 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
             msg: ColorCodesMsg::SixBands,
         }),
         (KeyCode::Esc, _) => Some(Msg::Exit),
-        _ => {
+        (_, SelectedTab::SpecsToColorCodes) => {
             let target_input_state = match model.specs_to_color.focus {
                 InputFocus::Resistance => &mut model.specs_to_color.resistance_input_state,
                 InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input_state,
@@ -82,6 +82,7 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
             target_input_state.value = input.value().to_string();
             None
         }
+        _ => None,
     }
 }
 

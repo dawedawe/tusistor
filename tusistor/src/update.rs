@@ -23,38 +23,21 @@ pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
 
 fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
     match (&model.selected_tab, key.code) {
+        (_, KeyCode::Esc) => Some(Msg::Exit),
         (_, KeyCode::Left) | (_, KeyCode::Right) if key.modifiers == KeyModifiers::SHIFT => {
             Some(Msg::ToggleTab)
         }
-        (SelectedTab::SpecsToColorCodes, KeyCode::Enter) => Some(Msg::SpecsMsg {
-            msg: SpecsMsg::Determine,
-        }),
-        (SelectedTab::SpecsToColorCodes, KeyCode::Tab) => Some(Msg::SpecsMsg {
-            msg: SpecsMsg::NextSpecInput,
-        }),
-        (SelectedTab::ColorCodesToSpecs, KeyCode::Tab) => Some(Msg::ColorCodesMsg {
-            msg: ColorCodesMsg::NextBand,
-        }),
-        (SelectedTab::SpecsToColorCodes, KeyCode::BackTab) => Some(Msg::SpecsMsg {
-            msg: SpecsMsg::PrevSpecInput,
-        }),
-        (SelectedTab::ColorCodesToSpecs, KeyCode::BackTab) => Some(Msg::ColorCodesMsg {
-            msg: ColorCodesMsg::PrevBand,
-        }),
-        (SelectedTab::SpecsToColorCodes, KeyCode::Up) => Some(Msg::SpecsMsg {
-            msg: SpecsMsg::PrevHistory,
-        }),
-        (SelectedTab::SpecsToColorCodes, KeyCode::Down) => Some(Msg::SpecsMsg {
-            msg: SpecsMsg::NextHistory,
-        }),
-        (SelectedTab::SpecsToColorCodes, KeyCode::Char('X')) => Some(Msg::SpecsMsg {
-            msg: SpecsMsg::Reset,
-        }),
         (SelectedTab::ColorCodesToSpecs, KeyCode::Up) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::PrevColor,
         }),
         (SelectedTab::ColorCodesToSpecs, KeyCode::Down) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::NextColor,
+        }),
+        (SelectedTab::ColorCodesToSpecs, KeyCode::BackTab) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::PrevBand,
+        }),
+        (SelectedTab::ColorCodesToSpecs, KeyCode::Tab) => Some(Msg::ColorCodesMsg {
+            msg: ColorCodesMsg::NextBand,
         }),
         (SelectedTab::ColorCodesToSpecs, KeyCode::Char('3')) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::ThreeBands,
@@ -68,7 +51,24 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
         (SelectedTab::ColorCodesToSpecs, KeyCode::Char('6')) => Some(Msg::ColorCodesMsg {
             msg: ColorCodesMsg::SixBands,
         }),
-        (_, KeyCode::Esc) => Some(Msg::Exit),
+        (SelectedTab::SpecsToColorCodes, KeyCode::Enter) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::Determine,
+        }),
+        (SelectedTab::SpecsToColorCodes, KeyCode::BackTab) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::PrevSpecInput,
+        }),
+        (SelectedTab::SpecsToColorCodes, KeyCode::Tab) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::NextSpecInput,
+        }),
+        (SelectedTab::SpecsToColorCodes, KeyCode::Up) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::PrevHistory,
+        }),
+        (SelectedTab::SpecsToColorCodes, KeyCode::Down) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::NextHistory,
+        }),
+        (SelectedTab::SpecsToColorCodes, KeyCode::Char('X')) => Some(Msg::SpecsMsg {
+            msg: SpecsMsg::Reset,
+        }),
         (SelectedTab::SpecsToColorCodes, _) => {
             let target_input_state = match model.specs_to_color.focus {
                 InputFocus::Resistance => &mut model.specs_to_color.resistance_input_state,

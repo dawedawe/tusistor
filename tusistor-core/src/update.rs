@@ -237,3 +237,90 @@ pub fn try_determine_resistor(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ColorCodesMsg;
+    use crate::{
+        model::{ColorCodesToSpecsModel, InputState, SpecsToColorModel},
+        update::{SpecsMsg, update_on_colorcodemsg, update_on_specsmsg},
+    };
+
+    #[test]
+    fn test_nbands_msg() {
+        let mut model = ColorCodesToSpecsModel::default();
+        assert_eq!(model.resistor.bands().len(), 6);
+
+        update_on_colorcodemsg(&mut model, ColorCodesMsg::ThreeBands);
+        assert_eq!(model.resistor.bands().len(), 3);
+
+        update_on_colorcodemsg(&mut model, ColorCodesMsg::FourBands);
+        assert_eq!(model.resistor.bands().len(), 4);
+
+        update_on_colorcodemsg(&mut model, ColorCodesMsg::FiveBands);
+        assert_eq!(model.resistor.bands().len(), 5);
+
+        update_on_colorcodemsg(&mut model, ColorCodesMsg::SixBands);
+        assert_eq!(model.resistor.bands().len(), 6);
+    }
+
+    #[test]
+    fn test_reset_msg() {
+        let mut model = SpecsToColorModel::default();
+        model.resistance_input_state = InputState {
+            value: String::from("z"),
+            cursor: 1,
+        };
+        model.tolerance_input_state = InputState {
+            value: String::from("z"),
+            cursor: 1,
+        };
+        model.tcr_input_state = InputState {
+            value: String::from("z"),
+            cursor: 1,
+        };
+        update_on_specsmsg(&mut model, SpecsMsg::Reset);
+        assert_eq!(model.resistance_input_state.value, "");
+        assert_eq!(model.tolerance_input_state.value, "");
+        assert_eq!(model.tcr_input_state.value, "");
+    }
+
+    #[test]
+    fn test_history() {
+        let mut model = SpecsToColorModel::default();
+        model.resistance_input_state = InputState {
+            value: String::from("1"),
+            cursor: 1,
+        };
+        model.tolerance_input_state = InputState {
+            value: String::from("2"),
+            cursor: 1,
+        };
+
+        model.tcr_input_state = InputState {
+            value: String::from("5"),
+            cursor: 1,
+        };
+        update_on_specsmsg(&mut model, SpecsMsg::Determine);
+
+        model.resistance_input_state = InputState {
+            value: String::from("2"),
+            cursor: 1,
+        };
+        model.tolerance_input_state = InputState {
+            value: String::from("5"),
+            cursor: 1,
+        };
+
+        model.tcr_input_state = InputState {
+            value: String::from("1"),
+            cursor: 1,
+        };
+        update_on_specsmsg(&mut model, SpecsMsg::Determine);
+        update_on_specsmsg(&mut model, SpecsMsg::PrevHistory);
+        update_on_specsmsg(&mut model, SpecsMsg::PrevHistory);
+        assert_eq!(model.resistance_input_state.value, "1");
+        assert_eq!(model.tolerance_input_state.value, "2");
+        assert_eq!(model.tcr_input_state.value, "5");
+    }
+}

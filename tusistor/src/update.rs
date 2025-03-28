@@ -98,13 +98,9 @@ pub fn update(model: &mut Model, msg: Msg) {
 
 #[cfg(test)]
 mod tests {
-    use tusistor_core::{
-        model::{InputState, SelectedTab},
-        update,
-    };
-
-    use super::{ColorCodesMsg, Msg, update};
+    use super::{Msg, update};
     use crate::model::Model;
+    use tusistor_core::model::SelectedTab;
 
     #[test]
     fn test_exit_msg() {
@@ -120,128 +116,5 @@ mod tests {
         assert_eq!(model.selected_tab, SelectedTab::SpecsToColorCodes);
         update(&mut model, Msg::ToggleTab);
         assert_eq!(model.selected_tab, SelectedTab::ColorCodesToSpecs)
-    }
-
-    #[test]
-    fn test_nbands_msg() {
-        let mut model = Model::default();
-        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 6);
-
-        update(
-            &mut model,
-            Msg::ColorCodesMsg {
-                msg: ColorCodesMsg::ThreeBands,
-            },
-        );
-        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 3);
-
-        update(
-            &mut model,
-            Msg::ColorCodesMsg {
-                msg: ColorCodesMsg::FourBands,
-            },
-        );
-        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 4);
-
-        update(
-            &mut model,
-            Msg::ColorCodesMsg {
-                msg: ColorCodesMsg::FiveBands,
-            },
-        );
-        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 5);
-
-        update(
-            &mut model,
-            Msg::ColorCodesMsg {
-                msg: ColorCodesMsg::SixBands,
-            },
-        );
-        assert_eq!(model.color_codes_to_specs.resistor.bands().len(), 6);
-    }
-
-    #[test]
-    fn test_reset_msg() {
-        let mut model = Model::default();
-        model.specs_to_color.resistance_input_state = InputState {
-            value: String::from("z"),
-            cursor: 1,
-        };
-        model.specs_to_color.tolerance_input_state = InputState {
-            value: String::from("z"),
-            cursor: 1,
-        };
-        model.specs_to_color.tcr_input_state = InputState {
-            value: String::from("z"),
-            cursor: 1,
-        };
-        update(
-            &mut model,
-            Msg::SpecsMsg {
-                msg: update::SpecsMsg::Reset,
-            },
-        );
-        assert_eq!(model.specs_to_color.resistance_input_state.value, "");
-        assert_eq!(model.specs_to_color.tolerance_input_state.value, "");
-        assert_eq!(model.specs_to_color.tcr_input_state.value, "");
-    }
-
-    #[test]
-    fn test_history() {
-        let mut model = Model::default();
-        model.specs_to_color.resistance_input_state = InputState {
-            value: String::from("1"),
-            cursor: 1,
-        };
-        model.specs_to_color.tolerance_input_state = InputState {
-            value: String::from("2"),
-            cursor: 1,
-        };
-
-        model.specs_to_color.tcr_input_state = InputState {
-            value: String::from("5"),
-            cursor: 1,
-        };
-        update(
-            &mut model,
-            Msg::SpecsMsg {
-                msg: update::SpecsMsg::Determine,
-            },
-        );
-
-        model.specs_to_color.resistance_input_state = InputState {
-            value: String::from("2"),
-            cursor: 1,
-        };
-        model.specs_to_color.tolerance_input_state = InputState {
-            value: String::from("5"),
-            cursor: 1,
-        };
-
-        model.specs_to_color.tcr_input_state = InputState {
-            value: String::from("1"),
-            cursor: 1,
-        };
-        update(
-            &mut model,
-            Msg::SpecsMsg {
-                msg: update::SpecsMsg::Determine,
-            },
-        );
-        update(
-            &mut model,
-            Msg::SpecsMsg {
-                msg: update::SpecsMsg::PrevHistory,
-            },
-        );
-        update(
-            &mut model,
-            Msg::SpecsMsg {
-                msg: update::SpecsMsg::PrevHistory,
-            },
-        );
-        assert_eq!(model.specs_to_color.resistance_input_state.value, "1");
-        assert_eq!(model.specs_to_color.tolerance_input_state.value, "2");
-        assert_eq!(model.specs_to_color.tcr_input_state.value, "5");
     }
 }

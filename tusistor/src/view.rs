@@ -10,6 +10,7 @@ use ratatui::{
         Paragraph, Tabs,
     },
 };
+use tui_input::Input;
 use tusistor_core::{
     model::{InputFocus, SelectedTab},
     view::{band_numeric_info, band_semantic_info},
@@ -262,28 +263,27 @@ pub fn view(model: &Model, frame: &mut Frame) {
             let help_message = Paragraph::new(text);
             frame.render_widget(help_message, help_msg_rect);
 
+            let resistance_input =
+                Input::new(model.specs_to_color.resistance_input_state.value.clone())
+                    .with_cursor(model.specs_to_color.resistance_input_state.cursor);
             let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-            let resistance_scroll = model
-                .specs_to_color
-                .resistance_input
-                .visual_scroll(resistance_width as usize);
-            let resistance_paragraph =
-                Paragraph::new(model.specs_to_color.resistance_input.value())
-                    .style(specs_style)
-                    .scroll((0, resistance_scroll as u16))
-                    .block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .title(" Resistance (Ω) "),
-                    );
+            let resistance_scroll = resistance_input.visual_scroll(resistance_width as usize);
+            let resistance_paragraph = Paragraph::new(resistance_input.value())
+                .style(specs_style)
+                .scroll((0, resistance_scroll as u16))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(" Resistance (Ω) "),
+                );
             frame.render_widget(resistance_paragraph, resistance_rect);
 
+            let tolerance_input =
+                Input::new(model.specs_to_color.tolerance_input_state.value.clone())
+                    .with_cursor(model.specs_to_color.tolerance_input_state.cursor);
             let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-            let tolerance_scroll = model
-                .specs_to_color
-                .tolerance_input
-                .visual_scroll(tolerance_width as usize);
-            let tolerance_paragraph = Paragraph::new(model.specs_to_color.tolerance_input.value())
+            let tolerance_scroll = tolerance_input.visual_scroll(tolerance_width as usize);
+            let tolerance_paragraph = Paragraph::new(tolerance_input.value())
                 .style(specs_style)
                 .scroll((0, tolerance_scroll as u16))
                 .block(
@@ -293,12 +293,11 @@ pub fn view(model: &Model, frame: &mut Frame) {
                 );
             frame.render_widget(tolerance_paragraph, tolerance_rect);
 
+            let tcr_input = Input::new(model.specs_to_color.tcr_input_state.value.clone())
+                .with_cursor(model.specs_to_color.tcr_input_state.cursor);
             let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-            let tcr_scroll = model
-                .specs_to_color
-                .tcr_input
-                .visual_scroll(tcr_width as usize);
-            let tcr_paragraph = Paragraph::new(model.specs_to_color.tcr_input.value())
+            let tcr_scroll = tcr_input.visual_scroll(tcr_width as usize);
+            let tcr_paragraph = Paragraph::new(tcr_input.value())
                 .style(specs_style)
                 .scroll((0, tcr_scroll as u16))
                 .block(
@@ -310,17 +309,9 @@ pub fn view(model: &Model, frame: &mut Frame) {
 
             // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
             let (rect, input, scroll) = match model.specs_to_color.focus {
-                InputFocus::Resistance => (
-                    resistance_rect,
-                    &model.specs_to_color.resistance_input,
-                    resistance_scroll,
-                ),
-                InputFocus::Tolerance => (
-                    tolerance_rect,
-                    &model.specs_to_color.tolerance_input,
-                    tolerance_scroll,
-                ),
-                InputFocus::Tcr => (tcr_rect, &model.specs_to_color.tcr_input, tcr_scroll),
+                InputFocus::Resistance => (resistance_rect, resistance_input, resistance_scroll),
+                InputFocus::Tolerance => (tolerance_rect, tolerance_input, tolerance_scroll),
+                InputFocus::Tcr => (tcr_rect, tcr_input, tcr_scroll),
             };
             frame.set_cursor_position((
                 // Put cursor past the end of the input text

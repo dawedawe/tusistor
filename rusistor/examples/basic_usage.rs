@@ -1,5 +1,5 @@
 use rusistor::{Color, Resistor};
-#[allow(dead_code)]
+#[allow(unused_variables)]
 fn main() {
     // Example 1: Create a 4-band resistor
     let resistor = Resistor::try_create(vec![

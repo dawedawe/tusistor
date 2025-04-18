@@ -28,7 +28,7 @@ impl WebInput {
     }
 
     pub fn visual_cursor(&self) -> usize {
-        self.value.len()
+        self.cursor
     }
 
     pub fn visual_scroll(&self, width: usize) -> usize {

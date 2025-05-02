@@ -8,7 +8,7 @@ repository.workspace = true
 description = "This is a Ratatui app to calculate the color code and specs of electrical resistors."
 
 [dependencies]
-crossterm = "0.28.1"
+crossterm = "0.29.0"
 ratatui = "0.29.0"
 color-eyre = "0.6.3"
 tui-input = "0.12.0"

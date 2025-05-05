@@ -1457,9 +1457,9 @@ dependencies = [
 
 [[package]]
 name = "tui-input"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e938a92d777c92c19bbad0900f7887696d82673269aceadf056055f1e6cd764e"
+checksum = "dce25d24adf2c5350c57426f25cf12bc767455a6d9202be155458fc768ea1268"
 dependencies = [
  "ratatui 0.30.0-alpha.2",
  "unicode-width 0.2.0",

@@ -63,8 +63,8 @@ jobs:
         env:
           RUSTDOCFLAGS: --cfg docsrs
   test:
-    runs-on: ${{ matrix.os }}
     name: test ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -87,3 +87,14 @@ jobs:
         run: cargo test --locked --all-features --all-targets --workspace
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
+  semver-checks:
+    name: semver-checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: smver-checks
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          package: rusistor
+

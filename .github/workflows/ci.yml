@@ -94,7 +94,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: smver-checks
-        uses: dawedawe/cargo-semver-checks-action@61b07a9e4fbbf381ee20e1f6788428f9b54c57ba
+        uses: dawedawe/cargo-semver-checks-action@46feffc943392a2d91435ba141783e2f4edfdbd3
         with:
           package: rusistor
 

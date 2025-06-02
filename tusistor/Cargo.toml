@@ -10,7 +10,7 @@ description = "This is a Ratatui app to calculate the color code and specs of el
 [dependencies]
 crossterm = "0.28.1"
 ratatui = "0.29.0"
-color-eyre = "0.6.3"
+color-eyre = "0.6.5"
 tui-input = "0.12.1"
 rusistor = { path = "../rusistor", version = "0.3.1" }
 tusistor-core = { path = "../tusistor-core", version = "0.1.0" }

@@ -355,7 +355,8 @@ pub fn view(model: &Model, frame: &mut Frame) {
             if let Some(e) = &model.specs_to_color.error {
                 let text = Text::from(e.to_string());
                 let error_message = Paragraph::new(text).style(Style::default().fg(Color::Red));
-                frame.render_widget(error_message, main_rect);
+                let centered_main_rect = center_horizontal(main_rect, e.len() as u16);
+                frame.render_widget(error_message, centered_main_rect);
             }
         }
     }

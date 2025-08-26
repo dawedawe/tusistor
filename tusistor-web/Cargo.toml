@@ -10,5 +10,5 @@ description = "This is a Ratzilla app to calculate the color code of electrical 
 [dependencies]
 rusistor = { path = "../rusistor", version = "0.3.1" }
 tusistor-core = { path = "../tusistor-core", version = "0.1.0" }
-engineering-repr = "1.1.0"
+engineering-repr = "1.1.1"
 ratzilla = "0.1.0"

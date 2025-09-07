@@ -9,4 +9,4 @@ description = "This crate provides shared code for tusistor and tusistor-web."
 
 [dependencies]
 rusistor = { path = "../rusistor", version = "0.3.0" }
-engineering-repr = "1.1.0"
+engineering-repr = "1.1.1"

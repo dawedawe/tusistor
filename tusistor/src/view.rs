@@ -359,7 +359,7 @@ fn barchart(
     ohm: f64,
     tolerance: f64,
     tcr: Option<u32>,
-) -> BarChart {
+) -> BarChart<'_> {
     let bars: Vec<Bar> = band_infos.iter().map(|i| bar(i)).collect();
     let tcr = if let Some(tcr) = tcr {
         format!(" - TCR: {}(ppm/K)", tcr)
@@ -385,7 +385,7 @@ fn barchart(
         .bar_gap(1)
 }
 
-fn bar((sem_info, num_info, color, name): &(String, String, Color, String)) -> Bar {
+fn bar((sem_info, num_info, color, name): &(String, String, Color, String)) -> Bar<'_> {
     Bar::default()
         .value(100)
         .text_value(format!(" {} ", name))

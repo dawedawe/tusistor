@@ -941,7 +941,6 @@ version = "0.7.1"
 dependencies = [
  "color-eyre",
  "crossterm",
- "engineering-repr",
  "ratatui",
  "rusistor",
  "tui-input",
@@ -960,7 +959,6 @@ dependencies = [
 name = "tusistor-web"
 version = "0.1.0"
 dependencies = [
- "engineering-repr",
  "ratzilla",
  "rusistor",
  "tusistor-core",

@@ -6,5 +6,5 @@ resolver = "2"
 authors = ["dawe <dawedawe@posteo.de>"]
 license = "MIT"
 edition = "2024"
-repository = "https://github.com/dawedawe/tusistor"
+repository = "https://codeberg.org/dawe/tusistor"
 

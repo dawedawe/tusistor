@@ -1,5 +1,4 @@
 use crate::model::Model;
-use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use tui_input::Input;
 use tui_input::backend::crossterm::EventHandler;
@@ -13,7 +12,7 @@ pub enum Msg {
     ColorCodesMsg { msg: ColorCodesMsg },
 }
 
-pub fn handle_event(model: &mut Model) -> Result<Option<Msg>> {
+pub fn handle_event(model: &mut Model) -> color_eyre::Result<Option<Msg>> {
     match event::read()? {
         // it's important to check KeyEventKind::Press to avoid handling key release events
         Event::Key(key) if key.kind == KeyEventKind::Press => Result::Ok(on_key_event(model, key)),

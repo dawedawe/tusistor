@@ -30,5 +30,11 @@
     </style>
   </head>
   <body>
+    <script>
+      new MutationObserver((_, observer) => {
+        const grid = document.getElementById("grid");
+        if (grid) { grid.focus(); observer.disconnect(); }
+      }).observe(document.body, { childList: true, subtree: true });
+    </script>
   </body>
 </html>

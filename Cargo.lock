@@ -1834,6 +1834,7 @@ dependencies = [
 name = "tusistor-web"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "ratzilla",
  "rusistor",
  "tusistor-core",

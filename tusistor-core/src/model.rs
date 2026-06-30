@@ -1,3 +1,4 @@
+use ratatui_textarea::{CursorMove, TextArea};
 use rusistor::Resistor;
 
 #[derive(Debug, Default)]
@@ -120,47 +121,39 @@ impl Default for ColorCodesToSpecsModel {
     }
 }
 
-#[derive(Debug, Default, PartialEq)]
-pub struct InputState {
-    pub value: String,
-    pub cursor: usize,
-}
-
 #[derive(Debug, Default)]
-pub struct SpecsToColorModel {
-    pub resistance_input_state: InputState,
-    pub tolerance_input_state: InputState,
-    pub tcr_input_state: InputState,
+pub struct SpecsToColorModel<'a> {
+    pub resistance_textarea: TextArea<'a>,
+    pub tolerance_textarea: TextArea<'a>,
+    pub tcr_textarea: TextArea<'a>,
     pub focus: InputFocus,
     pub resistor: Option<Resistor>,
     pub history: SpecsHistory,
     pub error: Option<String>,
 }
 
-impl SpecsToColorModel {
+pub(crate) fn set_textarea(textarea: &mut TextArea, content: String, cursormoves: Vec<CursorMove>) {
+    textarea.select_all();
+    textarea.cut();
+    textarea.insert_str(content);
+    cursormoves.iter().for_each(|m| textarea.move_cursor(*m));
+}
+
+impl<'a> SpecsToColorModel<'a> {
     pub fn add_specs_to_history(&mut self) {
         let specs = (
-            self.resistance_input_state.value.clone(),
-            self.tolerance_input_state.value.clone(),
-            self.tcr_input_state.value.clone(),
+            self.resistance_textarea.lines()[0].clone(),
+            self.tolerance_textarea.lines()[0].clone(),
+            self.tcr_textarea.lines()[0].clone(),
         );
         self.history.add(specs);
     }
 
     pub fn set_specs_from_history(&mut self) {
         if let Some((a, b, c)) = self.history.try_get() {
-            self.resistance_input_state = InputState {
-                value: a.to_string(),
-                cursor: a.len(),
-            };
-            self.tolerance_input_state = InputState {
-                value: b.to_string(),
-                cursor: b.len(),
-            };
-            self.tcr_input_state = InputState {
-                value: c.to_string(),
-                cursor: c.len(),
-            };
+            set_textarea(&mut self.resistance_textarea, a.to_string(), vec![]);
+            set_textarea(&mut self.tolerance_textarea, b.to_string(), vec![]);
+            set_textarea(&mut self.tcr_textarea, c.to_string(), vec![]);
         }
     }
 }

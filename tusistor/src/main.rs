@@ -13,7 +13,7 @@ fn main() -> color_eyre::Result<()> {
     let mut model = Model::default();
 
     while model.running {
-        terminal.draw(|f| view(&model, f))?;
+        terminal.draw(|f| view(&mut model, f))?;
         if let Some(msg) = handle_event(&mut model)? {
             update(&mut model, msg)
         }

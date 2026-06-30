@@ -1,7 +1,5 @@
 use crate::model::Model;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use tui_input::Input;
-use tui_input::backend::crossterm::EventHandler;
 use tusistor_core::model::{InputFocus, SelectedTab};
 use tusistor_core::update::{ColorCodesMsg, SpecsMsg, update_on_colorcodemsg, update_on_specsmsg};
 
@@ -69,16 +67,12 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
             msg: SpecsMsg::Reset,
         }),
         (SelectedTab::SpecsToColorCodes, _) => {
-            let target_input_state = match model.specs_to_color.focus {
-                InputFocus::Resistance => &mut model.specs_to_color.resistance_input_state,
-                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input_state,
-                InputFocus::Tcr => &mut model.specs_to_color.tcr_input_state,
+            let target_textarea = match model.specs_to_color.focus {
+                InputFocus::Resistance => &mut model.specs_to_color.resistance_textarea,
+                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_textarea,
+                InputFocus::Tcr => &mut model.specs_to_color.tcr_textarea,
             };
-            let mut input =
-                Input::new(target_input_state.value.clone()).with_cursor(target_input_state.cursor);
-            input.handle_event(&Event::Key(key));
-            target_input_state.cursor = input.cursor();
-            target_input_state.value = input.value().to_string();
+            target_textarea.input(key);
             None
         }
         _ => None,

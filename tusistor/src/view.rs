@@ -10,7 +10,6 @@ use ratatui::{
         Paragraph, Tabs,
     },
 };
-use tui_input::Input;
 use tusistor_core::{
     model::{InputFocus, SelectedTab},
     view::{band_numeric_info, band_semantic_info},
@@ -78,12 +77,28 @@ fn band_list<'a>(band_idx: usize, bands: usize, is_focused: bool) -> List<'a> {
         .direction(ListDirection::TopToBottom)
 }
 
-pub fn view(model: &Model, frame: &mut Frame) {
+pub fn view(model: &mut Model, frame: &mut Frame) {
     fn center_horizontal(area: Rect, width: u16) -> Rect {
         let [area] = Layout::horizontal([Constraint::Length(width)])
             .flex(Flex::Center)
             .areas(area);
         area
+    }
+
+    fn apply_title<'a>(
+        block: Block<'a>,
+        current_focus: &InputFocus,
+        input: InputFocus,
+        title: &str,
+        title_style: Style,
+    ) -> Block<'a> {
+        if *current_focus == input {
+            block
+                .title(format!("{}* ", title))
+                .title_style(title_style.bold())
+        } else {
+            block.title(format!("{} ", title))
+        }
     }
 
     let tabs_width = 49;
@@ -263,62 +278,59 @@ pub fn view(model: &Model, frame: &mut Frame) {
             let help_message = Paragraph::new(text);
             frame.render_widget(help_message, help_msg_rect);
 
-            let resistance_input =
-                Input::new(model.specs_to_color.resistance_input_state.value.clone())
-                    .with_cursor(model.specs_to_color.resistance_input_state.cursor);
-            let resistance_width = resistance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-            let resistance_scroll = resistance_input.visual_scroll(resistance_width as usize);
-            let resistance_paragraph = Paragraph::new(resistance_input.value())
-                .style(specs_style)
-                .scroll((0, resistance_scroll as u16))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" Resistance (Ω) "),
-                );
-            frame.render_widget(resistance_paragraph, resistance_rect);
+            // render resistance input
+            let resistance_block = Block::default().borders(Borders::ALL).style(specs_style);
+            let resistance_block = apply_title(
+                resistance_block,
+                &model.specs_to_color.focus,
+                InputFocus::Resistance,
+                " Resistance (Ω)",
+                specs_style,
+            );
+            model
+                .specs_to_color
+                .resistance_textarea
+                .set_block(resistance_block);
+            model
+                .specs_to_color
+                .resistance_textarea
+                .set_cursor_line_style(specs_style);
+            frame.render_widget(&model.specs_to_color.resistance_textarea, resistance_rect);
 
-            let tolerance_input =
-                Input::new(model.specs_to_color.tolerance_input_state.value.clone())
-                    .with_cursor(model.specs_to_color.tolerance_input_state.cursor);
-            let tolerance_width = tolerance_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-            let tolerance_scroll = tolerance_input.visual_scroll(tolerance_width as usize);
-            let tolerance_paragraph = Paragraph::new(tolerance_input.value())
-                .style(specs_style)
-                .scroll((0, tolerance_scroll as u16))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" Tolerance (%) "),
-                );
-            frame.render_widget(tolerance_paragraph, tolerance_rect);
+            // render tolerance input
+            let tolerance_block = Block::default().borders(Borders::ALL).style(specs_style);
+            let tolerance_block = apply_title(
+                tolerance_block,
+                &model.specs_to_color.focus,
+                InputFocus::Tolerance,
+                " Tolerance (%)",
+                specs_style,
+            );
+            model
+                .specs_to_color
+                .tolerance_textarea
+                .set_block(tolerance_block);
+            model
+                .specs_to_color
+                .tolerance_textarea
+                .set_cursor_line_style(specs_style);
+            frame.render_widget(&model.specs_to_color.tolerance_textarea, tolerance_rect);
 
-            let tcr_input = Input::new(model.specs_to_color.tcr_input_state.value.clone())
-                .with_cursor(model.specs_to_color.tcr_input_state.cursor);
-            let tcr_width = tcr_rect.width.max(3) - 3; // keep 2 for borders and 1 for cursor
-            let tcr_scroll = tcr_input.visual_scroll(tcr_width as usize);
-            let tcr_paragraph = Paragraph::new(tcr_input.value())
-                .style(specs_style)
-                .scroll((0, tcr_scroll as u16))
-                .block(
-                    Block::default()
-                        .borders(Borders::ALL)
-                        .title(" TCR (ppm/K) "),
-                );
-            frame.render_widget(tcr_paragraph, tcr_rect);
-
-            // Make the cursor visible and ask tui-rs to put it at the specified coordinates after rendering
-            let (rect, input, scroll) = match model.specs_to_color.focus {
-                InputFocus::Resistance => (resistance_rect, resistance_input, resistance_scroll),
-                InputFocus::Tolerance => (tolerance_rect, tolerance_input, tolerance_scroll),
-                InputFocus::Tcr => (tcr_rect, tcr_input, tcr_scroll),
-            };
-            frame.set_cursor_position((
-                // Put cursor past the end of the input text
-                rect.x + ((input.visual_cursor()).max(scroll) - scroll) as u16 + 1,
-                // Move one line down, from the border to the input line
-                rect.y + 1,
-            ));
+            // render TCR input
+            let tcr_block = Block::default().borders(Borders::ALL).style(specs_style);
+            let tcr_block = apply_title(
+                tcr_block,
+                &model.specs_to_color.focus,
+                InputFocus::Tcr,
+                " TCR (ppm/K)",
+                specs_style,
+            );
+            model.specs_to_color.tcr_textarea.set_block(tcr_block);
+            model
+                .specs_to_color
+                .tcr_textarea
+                .set_cursor_line_style(specs_style);
+            frame.render_widget(&model.specs_to_color.tcr_textarea, tcr_rect);
 
             if let Some(resistor) = &model.specs_to_color.resistor {
                 let bands = resistor.bands();

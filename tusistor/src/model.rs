@@ -1,15 +1,15 @@
 use tusistor_core::model::{ColorCodesToSpecsModel, SelectedTab, SpecsToColorModel};
 
 #[derive(Debug)]
-pub struct Model {
+pub struct Model<'a> {
     pub running: bool,
     pub selected_tab: SelectedTab,
-    pub specs_to_color: SpecsToColorModel,
+    pub specs_to_color: SpecsToColorModel<'a>,
     pub color_codes_to_specs: ColorCodesToSpecsModel,
 }
 
-impl Default for Model {
-    fn default() -> Model {
+impl<'a> Default for Model<'a> {
+    fn default() -> Model<'a> {
         Model {
             running: true,
             selected_tab: SelectedTab::default(),

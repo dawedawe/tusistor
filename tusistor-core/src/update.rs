@@ -99,17 +99,17 @@ pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
     match msg {
         SpecsMsg::Determine => {
             match try_determine_resistor(
-                &model.resistance_input_state.value,
-                &model.tolerance_input_state.value,
-                &model.tcr_input_state.value,
+                &model.resistance_textarea.lines()[0],
+                &model.tolerance_textarea.lines()[0],
+                &model.tcr_textarea.lines()[0],
             ) {
                 Ok(resistor) => {
                     model.resistor = Some(resistor);
                     model.error = None;
                     model.history.add((
-                        model.resistance_input_state.value.to_string(),
-                        model.tolerance_input_state.value.to_string(),
-                        model.tcr_input_state.value.to_string(),
+                        model.resistance_textarea.lines()[0].clone(),
+                        model.tolerance_textarea.lines()[0].clone(),
+                        model.tcr_textarea.lines()[0].clone(),
                     ));
                     model.add_specs_to_history();
                     model.history.clear_idx();
@@ -123,7 +123,7 @@ pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
         SpecsMsg::NextSpecInput | SpecsMsg::PrevSpecInput => {
             model.error = match model.focus {
                 InputFocus::Resistance => {
-                    let value = &model.resistance_input_state.value;
+                    let value = &model.resistance_textarea.lines()[0];
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -131,7 +131,7 @@ pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
                     }
                 }
                 InputFocus::Tolerance => {
-                    let value = &model.tolerance_input_state.value;
+                    let value = &model.tolerance_textarea.lines()[0];
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -139,7 +139,7 @@ pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
                     }
                 }
                 InputFocus::Tcr => {
-                    let value = &model.tcr_input_state.value;
+                    let value = &model.tcr_textarea.lines()[0];
                     if value.trim().is_empty() {
                         None
                     } else {
@@ -242,7 +242,7 @@ pub fn try_determine_resistor(
 mod tests {
     use super::ColorCodesMsg;
     use crate::{
-        model::{ColorCodesToSpecsModel, InputState, SpecsToColorModel},
+        model::{ColorCodesToSpecsModel, SpecsToColorModel, set_textarea},
         update::{SpecsMsg, update_on_colorcodemsg, update_on_specsmsg},
     };
 
@@ -266,64 +266,35 @@ mod tests {
 
     #[test]
     fn test_reset_msg() {
-        let mut model = SpecsToColorModel {
-            resistance_input_state: InputState {
-                value: String::from("z"),
-                cursor: 1,
-            },
-            tolerance_input_state: InputState {
-                value: String::from("z"),
-                cursor: 1,
-            },
-            tcr_input_state: InputState {
-                value: String::from("z"),
-                cursor: 1,
-            },
-            ..Default::default()
-        };
+        let mut model = SpecsToColorModel::default();
+        model.resistance_textarea.insert_str("z");
+        model.tolerance_textarea.insert_str("z");
+        model.tcr_textarea.insert_str("z");
+
         update_on_specsmsg(&mut model, SpecsMsg::Reset);
-        assert_eq!(model.resistance_input_state.value, "");
-        assert_eq!(model.tolerance_input_state.value, "");
-        assert_eq!(model.tcr_input_state.value, "");
+
+        assert_eq!(model.resistance_textarea.lines()[0], "");
+        assert_eq!(model.tolerance_textarea.lines()[0], "");
+        assert_eq!(model.tcr_textarea.lines()[0], "");
     }
 
     #[test]
     fn test_history() {
-        let mut model = SpecsToColorModel {
-            resistance_input_state: InputState {
-                value: String::from("1"),
-                cursor: 1,
-            },
-            tolerance_input_state: InputState {
-                value: String::from("2"),
-                cursor: 1,
-            },
-            tcr_input_state: InputState {
-                value: String::from("5"),
-                cursor: 1,
-            },
-            ..Default::default()
-        };
+        let mut model = SpecsToColorModel::default();
+        model.resistance_textarea.insert_str("1");
+        model.tolerance_textarea.insert_str("2");
+        model.tcr_textarea.insert_str("5");
+
         update_on_specsmsg(&mut model, SpecsMsg::Determine);
-
-        model.resistance_input_state = InputState {
-            value: String::from("2"),
-            cursor: 1,
-        };
-        model.tolerance_input_state = InputState {
-            value: String::from("5"),
-            cursor: 1,
-        };
-
-        model.tcr_input_state = InputState {
-            value: String::from("1"),
-            cursor: 1,
-        };
+        set_textarea(&mut model.resistance_textarea, "2".into(), vec![]);
+        set_textarea(&mut model.tolerance_textarea, "5".into(), vec![]);
+        set_textarea(&mut model.tcr_textarea, "1".into(), vec![]);
         update_on_specsmsg(&mut model, SpecsMsg::Determine);
         update_on_specsmsg(&mut model, SpecsMsg::PrevHistory);
         update_on_specsmsg(&mut model, SpecsMsg::PrevHistory);
-        assert_eq!(model.resistance_input_state.value, "1");
-        assert_eq!(model.tolerance_input_state.value, "2");
-        assert_eq!(model.tcr_input_state.value, "5");
+
+        assert_eq!(model.resistance_textarea.lines()[0], "1");
+        assert_eq!(model.tolerance_textarea.lines()[0], "2");
+        assert_eq!(model.tcr_textarea.lines()[0], "5");
     }
 }

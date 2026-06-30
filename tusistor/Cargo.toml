@@ -11,6 +11,6 @@ description = "This is a Ratatui app to calculate the color code and specs of el
 crossterm = "0.29.0"
 ratatui = "0.30.2"
 color-eyre = "0.6.5"
-tui-input = "0.15.3"
 rusistor = { path = "../rusistor", version = "0.3.1" }
 tusistor-core = { path = "../tusistor-core", version = "0.1.0" }
+ratatui-textarea = { version = "0.9.2" }

@@ -1,4 +1,3 @@
-pub mod input;
 pub mod model;
 pub mod update;
 pub mod view;
@@ -20,7 +19,7 @@ fn main() -> io::Result<()> {
     })?;
 
     terminal.draw_web(move |frame| {
-        view(&model.borrow(), frame);
+        view(&mut model.borrow_mut(), frame);
     });
 
     Ok(())

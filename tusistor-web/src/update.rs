@@ -1,10 +1,10 @@
-use ratzilla::event;
+use ratzilla::event::{self, KeyCode};
 use tusistor_core::{
     model::{InputFocus, SelectedTab},
     update::{ColorCodesMsg, SpecsMsg, update_on_colorcodemsg, update_on_specsmsg},
 };
 
-use crate::{input::WebInput, model::Model};
+use crate::model::Model;
 
 pub enum Msg {
     ToggleTab,
@@ -101,18 +101,44 @@ pub fn handle_event(model: &mut Model, event: ratzilla::event::KeyEvent) {
             },
         ),
         (SelectedTab::SpecsToColorCodes, _) => {
-            let target_input_state = match model.specs_to_color.focus {
-                InputFocus::Resistance => &mut model.specs_to_color.resistance_input_state,
-                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_input_state,
-                InputFocus::Tcr => &mut model.specs_to_color.tcr_input_state,
+            let target_textarea = match model.specs_to_color.focus {
+                InputFocus::Resistance => &mut model.specs_to_color.resistance_textarea,
+                InputFocus::Tolerance => &mut model.specs_to_color.tolerance_textarea,
+                InputFocus::Tcr => &mut model.specs_to_color.tcr_textarea,
             };
-            let mut input = WebInput::new(target_input_state.value.clone())
-                .with_cursor(target_input_state.cursor);
-            input.handle_event(&event);
-            target_input_state.cursor = input.cursor();
-            target_input_state.value = input.value().to_string();
+
+            if let Some(key) = try_convert_code(event.code) {
+                let input: ratatui_textarea::Input = ratatui_textarea::Input {
+                    key,
+                    ctrl: event.ctrl,
+                    alt: event.alt,
+                    shift: event.shift,
+                };
+                target_textarea.input(input);
+            }
         }
         _ => (),
+    }
+}
+
+fn try_convert_code(code: KeyCode) -> Option<ratatui_textarea::Key> {
+    match code {
+        KeyCode::Char(c) => Some(ratatui_textarea::Key::Char(c)),
+        KeyCode::F(n) => Some(ratatui_textarea::Key::F(n)),
+        KeyCode::Backspace => Some(ratatui_textarea::Key::Backspace),
+        KeyCode::Enter => Some(ratatui_textarea::Key::Enter),
+        KeyCode::Left => Some(ratatui_textarea::Key::Left),
+        KeyCode::Right => Some(ratatui_textarea::Key::Right),
+        KeyCode::Up => Some(ratatui_textarea::Key::Up),
+        KeyCode::Down => Some(ratatui_textarea::Key::Down),
+        KeyCode::Tab => Some(ratatui_textarea::Key::Tab),
+        KeyCode::Delete => Some(ratatui_textarea::Key::Delete),
+        KeyCode::Home => Some(ratatui_textarea::Key::Home),
+        KeyCode::End => Some(ratatui_textarea::Key::End),
+        KeyCode::PageUp => Some(ratatui_textarea::Key::PageUp),
+        KeyCode::PageDown => Some(ratatui_textarea::Key::PageDown),
+        KeyCode::Esc => Some(ratatui_textarea::Key::Esc),
+        KeyCode::Unidentified => None,
     }
 }
 

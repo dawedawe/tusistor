@@ -1829,7 +1829,9 @@ name = "tusistor-core"
 version = "0.1.0"
 dependencies = [
  "engineering-repr",
+ "ratatui-core",
  "ratatui-textarea",
+ "ratatui-widgets",
  "rusistor",
 ]
 

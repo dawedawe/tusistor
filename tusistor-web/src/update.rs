@@ -1,10 +1,8 @@
 use ratzilla::event::{self, KeyCode};
 use tusistor_core::{
-    model::{InputFocus, SelectedTab},
+    model::{InputFocus, Model, SelectedTab},
     update::{ColorCodesMsg, SpecsMsg, update_on_colorcodemsg, update_on_specsmsg},
 };
-
-use crate::model::Model;
 
 pub enum Msg {
     ToggleTab,

@@ -95,6 +95,7 @@ pub fn update_on_colorcodemsg(model: &mut ColorCodesToSpecsModel, msg: ColorCode
         }
     }
 }
+
 pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
     match msg {
         SpecsMsg::Determine => {
@@ -168,7 +169,7 @@ pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
     }
 }
 
-pub fn try_parse_resistance(input: &str) -> Result<f64, String> {
+fn try_parse_resistance(input: &str) -> Result<f64, String> {
     match input.parse::<f64>() {
         Ok(t) => Ok(t),
         Err(e) => match engineering_repr::EngineeringQuantity::<i64>::from_str(input) {
@@ -182,7 +183,7 @@ pub fn try_parse_resistance(input: &str) -> Result<f64, String> {
     }
 }
 
-pub fn try_determine_resistor(
+fn try_determine_resistor(
     resistance_input: &str,
     tolerance_input: &str,
     tcr_input: &str,

@@ -1,7 +1,8 @@
-use crate::model::Model;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use tusistor_core::model::{InputFocus, SelectedTab};
+use tusistor_core::model::{InputFocus, Model, SelectedTab};
 use tusistor_core::update::{ColorCodesMsg, SpecsMsg, update_on_colorcodemsg, update_on_specsmsg};
+
+use crate::model::TuiModel;
 
 pub enum Msg {
     ToggleTab,
@@ -10,10 +11,12 @@ pub enum Msg {
     ColorCodesMsg { msg: ColorCodesMsg },
 }
 
-pub fn handle_event(model: &mut Model) -> color_eyre::Result<Option<Msg>> {
+pub fn handle_event(tui_model: &mut TuiModel) -> color_eyre::Result<Option<Msg>> {
     match event::read()? {
         // it's important to check KeyEventKind::Press to avoid handling key release events
-        Event::Key(key) if key.kind == KeyEventKind::Press => Result::Ok(on_key_event(model, key)),
+        Event::Key(key) if key.kind == KeyEventKind::Press => {
+            Result::Ok(on_key_event(&mut tui_model.core_model, key))
+        }
         _ => Result::Ok(None),
     }
 }
@@ -79,36 +82,47 @@ fn on_key_event(model: &mut Model, key: KeyEvent) -> Option<Msg> {
     }
 }
 
-pub fn update(model: &mut Model, msg: Msg) {
+pub fn update(tui_model: &mut TuiModel, msg: Msg) {
     match msg {
         Msg::Exit => {
-            model.running = false;
+            tui_model.running = false;
         }
-        Msg::ToggleTab => model.selected_tab = model.selected_tab.toggle(),
-        Msg::ColorCodesMsg { msg } => update_on_colorcodemsg(&mut model.color_codes_to_specs, msg),
-        Msg::SpecsMsg { msg } => update_on_specsmsg(&mut model.specs_to_color, msg),
+        Msg::ToggleTab => {
+            tui_model.core_model.selected_tab = tui_model.core_model.selected_tab.toggle()
+        }
+        Msg::ColorCodesMsg { msg } => {
+            update_on_colorcodemsg(&mut tui_model.core_model.color_codes_to_specs, msg)
+        }
+        Msg::SpecsMsg { msg } => update_on_specsmsg(&mut tui_model.core_model.specs_to_color, msg),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::model::TuiModel;
+
     use super::{Msg, update};
-    use crate::model::Model;
     use tusistor_core::model::SelectedTab;
 
     #[test]
     fn test_exit_msg() {
-        let mut model = Model::default();
-        update(&mut model, Msg::Exit);
-        assert!(!model.running)
+        let mut tui_model = TuiModel::default();
+        update(&mut tui_model, Msg::Exit);
+        assert!(!tui_model.running)
     }
 
     #[test]
     fn test_toggletab_msg() {
-        let mut model = Model::default();
-        update(&mut model, Msg::ToggleTab);
-        assert_eq!(model.selected_tab, SelectedTab::SpecsToColorCodes);
-        update(&mut model, Msg::ToggleTab);
-        assert_eq!(model.selected_tab, SelectedTab::ColorCodesToSpecs)
+        let mut tui_model = TuiModel::default();
+        update(&mut tui_model, Msg::ToggleTab);
+        assert_eq!(
+            tui_model.core_model.selected_tab,
+            SelectedTab::SpecsToColorCodes
+        );
+        update(&mut tui_model, Msg::ToggleTab);
+        assert_eq!(
+            tui_model.core_model.selected_tab,
+            SelectedTab::ColorCodesToSpecs
+        )
     }
 }

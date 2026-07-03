@@ -124,24 +124,24 @@ pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
         SpecsMsg::NextSpecInput | SpecsMsg::PrevSpecInput => {
             model.error = match model.focus {
                 InputFocus::Resistance => {
-                    let value = &model.resistance_textarea.lines()[0];
-                    if value.trim().is_empty() {
+                    let value = &model.resistance_textarea.lines()[0].trim();
+                    if value.is_empty() {
                         None
                     } else {
                         try_parse_resistance(value).err().map(|err| err.to_string())
                     }
                 }
                 InputFocus::Tolerance => {
-                    let value = &model.tolerance_textarea.lines()[0];
-                    if value.trim().is_empty() {
+                    let value = &model.tolerance_textarea.lines()[0].trim();
+                    if value.is_empty() {
                         None
                     } else {
                         value.parse::<f64>().err().map(|err| err.to_string())
                     }
                 }
                 InputFocus::Tcr => {
-                    let value = &model.tcr_textarea.lines()[0];
-                    if value.trim().is_empty() {
+                    let value = &model.tcr_textarea.lines()[0].trim();
+                    if value.is_empty() {
                         None
                     } else {
                         value.parse::<u32>().err().map(|err| err.to_string())
@@ -170,7 +170,7 @@ pub fn update_on_specsmsg(model: &mut SpecsToColorModel, msg: SpecsMsg) {
 }
 
 fn try_parse_resistance(input: &str) -> Result<f64, String> {
-    match input.parse::<f64>() {
+    match input.trim().parse::<f64>() {
         Ok(t) => Ok(t),
         Err(e) => match engineering_repr::EngineeringQuantity::<i64>::from_str(input) {
             Ok(t) => {
@@ -189,19 +189,19 @@ fn try_determine_resistor(
     tcr_input: &str,
 ) -> Result<Resistor, String> {
     let resistance = try_parse_resistance(resistance_input);
-    let tolerance = if tolerance_input.is_empty() {
+    let tolerance = if tolerance_input.trim().is_empty() {
         Ok(None)
     } else {
-        match tolerance_input.parse::<f64>() {
+        match tolerance_input.trim().parse::<f64>() {
             Ok(t) => Ok(Some(t)),
             Err(e) => Err(format!("invalid input for tolerance: {}", e)),
         }
     };
 
-    let tcr = if tcr_input.is_empty() {
+    let tcr = if tcr_input.trim().is_empty() {
         Ok(None)
     } else {
-        match tcr_input.parse::<u32>() {
+        match tcr_input.trim().parse::<u32>() {
             Ok(t) => Ok(Some(t)),
             Err(e) => Err(format!("invalid input for tcr: {}", e)),
         }

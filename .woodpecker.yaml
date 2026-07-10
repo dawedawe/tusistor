@@ -9,6 +9,7 @@ steps:
     image: rust
     environment:
       CARGO_TERM_COLOR: always
+      RUSTFLAGS: -Dwarnings
     commands:
       - rustup default $RUST
       - rustup component add rustfmt
